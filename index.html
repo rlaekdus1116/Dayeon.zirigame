@@ -37,97 +37,92 @@ const MAP_W = 1000, MAP_H = 1400;
 
 const PROVINCES = [{"key":"gangwon","name":"강원도","regions":[{"name":"철원","x":410,"y":183},{"name":"고성","x":564,"y":144},{"name":"속초","x":584,"y":198},{"name":"양양","x":599,"y":238},{"name":"강릉","x":639,"y":308},{"name":"동해","x":667,"y":358},{"name":"삼척","x":689,"y":410},{"name":"태백","x":656,"y":445},{"name":"인제","x":546,"y":236},{"name":"양구","x":502,"y":186},{"name":"화천","x":458,"y":201},{"name":"춘천","x":465,"y":260},{"name":"홍천","x":511,"y":296},{"name":"횡성","x":522,"y":347},{"name":"평창","x":571,"y":332},{"name":"정선","x":614,"y":386},{"name":"원주","x":486,"y":403},{"name":"영월","x":574,"y":426}]},{"key":"chungcheong","name":"충청도","regions":[{"name":"음성","x":438,"y":486},{"name":"충주","x":488,"y":473},{"name":"제천","x":529,"y":445},{"name":"단양","x":565,"y":471},{"name":"당진","x":305,"y":502},{"name":"천안","x":388,"y":520},{"name":"진천","x":418,"y":508},{"name":"태안","x":236,"y":531},{"name":"서산","x":271,"y":531},{"name":"아산","x":350,"y":524},{"name":"증평","x":447,"y":530},{"name":"괴산","x":483,"y":530},{"name":"홍성","x":295,"y":584},{"name":"예산","x":327,"y":559},{"name":"청주","x":429,"y":564},{"name":"청양","x":327,"y":616},{"name":"공주","x":364,"y":587},{"name":"보은","x":467,"y":599},{"name":"보령","x":292,"y":635},{"name":"부여","x":333,"y":659},{"name":"계룡","x":390,"y":653},{"name":"옥천","x":453,"y":641},{"name":"영동","x":481,"y":679},{"name":"서천","x":309,"y":694},{"name":"논산","x":380,"y":676},{"name":"금산","x":428,"y":689},{"name":"대전","x":416,"y":632},{"name":"세종","x":396,"y":596}]},{"key":"gyeongbuk","name":"경상북도","regions":[{"name":"봉화","x":643,"y":495},{"name":"영주","x":589,"y":508},{"name":"울진","x":709,"y":491},{"name":"울릉","x":938,"y":340},{"name":"문경","x":535,"y":546},{"name":"예천","x":574,"y":555},{"name":"영양","x":681,"y":545},{"name":"안동","x":633,"y":575},{"name":"상주","x":519,"y":613},{"name":"영덕","x":717,"y":600},{"name":"군위","x":609,"y":682},{"name":"의성","x":617,"y":635},{"name":"청송","x":674,"y":628},{"name":"구미","x":564,"y":672},{"name":"포항","x":730,"y":703},{"name":"김천","x":520,"y":694},{"name":"칠곡","x":579,"y":714},{"name":"영천","x":652,"y":707},{"name":"성주","x":546,"y":736},{"name":"경산","x":634,"y":765},{"name":"경주","x":700,"y":755},{"name":"고령","x":552,"y":783},{"name":"청도","x":624,"y":801},{"name":"대구","x":603,"y":742}]},{"key":"gyeongnam","name":"경상남도","regions":[{"name":"거창","x":494,"y":774},{"name":"합천","x":526,"y":824},{"name":"밀양","x":628,"y":839},{"name":"창녕","x":583,"y":827},{"name":"산청","x":494,"y":865},{"name":"함양","x":469,"y":814},{"name":"의령","x":554,"y":859},{"name":"양산","x":672,"y":853},{"name":"함안","x":571,"y":894},{"name":"김해","x":639,"y":885},{"name":"하동","x":474,"y":921},{"name":"진주","x":530,"y":906},{"name":"창원","x":601,"y":913},{"name":"사천","x":516,"y":946},{"name":"고성","x":556,"y":950},{"name":"통영","x":562,"y":998},{"name":"남해","x":504,"y":1009},{"name":"거제","x":607,"y":986},{"name":"울산","x":704,"y":816},{"name":"부산","x":684,"y":903}]},{"key":"jeonbuk","name":"전라북도","regions":[{"name":"군산","x":308,"y":736},{"name":"익산","x":352,"y":711},{"name":"완주","x":390,"y":720},{"name":"무주","x":462,"y":730},{"name":"김제","x":334,"y":767},{"name":"전주","x":374,"y":763},{"name":"진안","x":421,"y":749},{"name":"부안","x":301,"y":792},{"name":"정읍","x":336,"y":811},{"name":"임실","x":390,"y":815},{"name":"장수","x":438,"y":799},{"name":"순창","x":374,"y":864},{"name":"고창","x":295,"y":853},{"name":"남원","x":418,"y":856}]},{"key":"jeonnam","name":"전라남도","regions":[{"name":"영광","x":270,"y":895},{"name":"곡성","x":399,"y":905},{"name":"장성","x":317,"y":887},{"name":"담양","x":349,"y":886},{"name":"함평","x":277,"y":930},{"name":"구례","x":432,"y":903},{"name":"나주","x":311,"y":959},{"name":"화순","x":356,"y":953},{"name":"순천","x":414,"y":958},{"name":"무안","x":265,"y":974},{"name":"보성","x":379,"y":1003},{"name":"신안","x":210,"y":998},{"name":"목포","x":251,"y":1004},{"name":"영암","x":302,"y":1004},{"name":"장흥","x":340,"y":1014},{"name":"고흥","x":401,"y":1055},{"name":"광양","x":459,"y":958},{"name":"해남","x":287,"y":1063},{"name":"강진","x":319,"y":1044},{"name":"여수","x":457,"y":1013},{"name":"진도","x":234,"y":1090},{"name":"완도","x":322,"y":1121},{"name":"광주","x":327,"y":920}]},{"key":"jeju","name":"제주도","regions":[{"name":"제주","x":271,"y":1324},{"name":"서귀포","x":299,"y":1360}]}];
 
-const PALETTE = [
-  "#ef4444","#f97316","#eab308","#84cc16","#22c55e","#14b8a6",
-  "#06b6d4","#3b82f6","#6366f1","#a855f7","#ec4899","#f43f5e"
-];
-
-// 팀 색상 (빨강, 파랑, 초록, 노랑)
-const TEAM_COLORS = ["#ef4444", "#3b82f6", "#22c55e", "#eab308"];
-const TEAM_NAMES = ["1팀(빨강)", "2팀(파랑)", "3팀(초록)", "4팀(노랑)"];
+const TEAM_COLORS = ["#ef4444","#3b82f6","#22c55e","#f59e0b","#a855f7","#ec4899"];
+const TEAM_NAMES  = ["빨강팀","파랑팀","초록팀","노랑팀","보라팀","분홍팀"];
 
 const CHO = ["ㄱ","ㄲ","ㄴ","ㄷ","ㄸ","ㄹ","ㅁ","ㅂ","ㅃ","ㅅ","ㅆ","ㅇ","ㅈ","ㅉ","ㅊ","ㅋ","ㅌ","ㅍ","ㅎ"];
-function choseong(s){return [...s].map(ch=>{const c=ch.charCodeAt(0)-0xac00;return(c<0||c>11171)?ch:CHO[Math.floor(c/588)];}).join(" ");}
+function choseong(s){return[...s].map(ch=>{const c=ch.charCodeAt(0)-0xac00;return(c<0||c>11171)?ch:CHO[Math.floor(c/588)];}).join(" ");}
 function normalize(s){return s.replace(/\s/g,"").replace(/(특별자치도|광역시|특별시|자치시|시|군|구)$/,"");}
 
-const fbk = (prov, name) => `${prov}__${name}`;
+const fbk = (prov,name)=>`${prov}__${name}`;
 
 function getMyPid(){
-  let id = sessionStorage.getItem('ziri_pid');
+  let id=sessionStorage.getItem('ziri_pid');
   if(!id){id='p'+Date.now().toString(36)+Math.random().toString(36).slice(2,5);sessionStorage.setItem('ziri_pid',id);}
   return id;
 }
 function genCode(){return Math.random().toString(36).slice(2,8).toUpperCase();}
+
 const TOTAL_REGIONS = PROVINCES.reduce((a,p)=>a+p.regions.length,0);
 
-// ===================== 메인 컴포넌트 =====================
 function LandGrab(){
   const myPid = useMemo(()=>getMyPid(),[]);
 
-  const [phase,   setPhase]   = useState("home");
-  const [roomCode,setRoomCode]= useState("");
-  const [inputCode,setInputCode]= useState("");
-  const [myName,  setMyName]  = useState(sessionStorage.getItem('ziri_name')||"");
-  const [myColor, setMyColor] = useState(sessionStorage.getItem('ziri_color')||PALETTE[0]);
-  const [isHost,  setIsHost]  = useState(false);
-  const [error,   setError]   = useState("");
+  const [phase,     setPhase]     = useState("home");
+  const [roomCode,  setRoomCode]  = useState("");
+  const [inputCode, setInputCode] = useState("");
+  const [myName,    setMyName]    = useState(sessionStorage.getItem('ziri_name')||"");
+  const [myTeamIdx, setMyTeamIdx] = useState(null); // 내가 속한 팀 인덱스
+  const [isHost,    setIsHost]    = useState(false);
+  const [error,     setError]     = useState("");
 
-  const [sel,     setSel]     = useState(null);
-  const [selProv, setSelProv] = useState(null);
-  const [inputAns,setInputAns]= useState("");
-  const [mfb,     setMfb]     = useState(null);
-  const [flash,   setFlash]   = useState(null);
-  const [bgmOn,   setBgmOn]   = useState(true);
+  // 방 만들기 설정
+  const [teamCount,  setTeamCount]  = useState(2);
+  const [teamNames,  setTeamNames]  = useState([...TEAM_NAMES]);
 
-  const [roomData,setRoomData]= useState(null);
+  // 게임 UI
+  const [sel,      setSel]      = useState(null);
+  const [selProv,  setSelProv]  = useState(null);
+  const [inputAns, setInputAns] = useState("");
+  const [mfb,      setMfb]      = useState(null);
+  const [flash,    setFlash]    = useState(null);
+  const [bgmOn,    setBgmOn]    = useState(true);
+
+  const [roomData, setRoomData] = useState(null);
+
   const inputRef = useRef(null);
   const actxRef  = useRef(null);
   const bgmRef   = useRef(null);
   const bgmOnRef = useRef(true);
 
+  // Firebase 리스너
   useEffect(()=>{
     if(!roomCode) return;
     const ref = db.ref(`rooms/${roomCode}`);
-    ref.on('value', snap => setRoomData(snap.val()));
+    ref.on('value', snap=>setRoomData(snap.val()));
     return ()=>ref.off();
   },[roomCode]);
 
+  // 게임 상태 전환
   useEffect(()=>{
     if(!roomData) return;
     const g = roomData.game||{};
-    if(phase==="waiting" && g.started)       { setPhase("game"); startBgm(); }
-    if(phase==="game"    && g.cleared)       { setPhase("result"); stopBgm(); }
-    if(phase==="result"  && g.started && !g.cleared) { setPhase("game"); }
-    if((phase==="game"||phase==="result") && !g.started) { setPhase("waiting"); setSel(null); stopBgm(); }
+    if(phase==="waiting" && g.started)              { setPhase("game"); startBgm(); }
+    if(phase==="game"    && g.cleared)              { setPhase("result"); stopBgm(); }
+    if(phase==="result"  && g.started && !g.cleared){ setPhase("game"); }
+    if((phase==="game"||phase==="result") && !g.started){ setPhase("waiting"); setSel(null); stopBgm(); }
   },[roomData]);
 
   useEffect(()=>{ bgmOnRef.current=bgmOn; },[bgmOn]);
 
+  // 파생 상태
   const game    = roomData?.game    || {};
   const players = roomData?.players || {};
   const owners  = roomData?.owners  || {};
-  const myPlayer= players[myPid];
-  const isTeamMode = game.teamCount > 0;
-  
-  // 점수 계산 (팀전 vs 개인전)
-  const scores  = useMemo(()=>{
-    const s={};
-    Object.values(owners).forEach(pid=>{
-      if(isTeamMode) {
-        const t = players[pid]?.team;
-        if(t !== undefined) s[`team_${t}`] = (s[`team_${t}`]||0)+1;
-      } else {
-        s[pid]=(s[pid]||0)+1;
-      }
-    });
-    return s;
-  },[owners, players, isTeamMode]);
+  const teams   = game.teams || TEAM_NAMES.slice(0,2).map((n,i)=>({name:n,color:TEAM_COLORS[i]}));
 
-  const prov    = (game.started && game.mode!=="nation" && game.order?.length>0)
-                  ? PROVINCES[game.order[game.provIdx||0]] : null;
-  const provOwned = prov ? prov.regions.filter(r=>owners[fbk(prov.key,r.name)]!==undefined).length : 0;
-  const provTotal = prov ? prov.regions.length : 0;
-  const totalOwned= Object.keys(owners).length;
+  // 팀별 점수 (owners[key] = teamIdx)
+  const scores = useMemo(()=>{
+    const s = Array(teams.length).fill(0);
+    Object.values(owners).forEach(ti=>{ if(ti>=0 && ti<s.length) s[ti]++; });
+    return s;
+  },[owners, teams]);
+
+  const prov = (game.started && game.mode!=="nation" && game.order?.length>0)
+               ? PROVINCES[game.order[game.provIdx||0]] : null;
+  const provOwned  = prov ? prov.regions.filter(r=>owners[fbk(prov.key,r.name)]!==undefined).length : 0;
+  const provTotal  = prov ? prov.regions.length : 0;
+  const totalOwned = Object.keys(owners).length;
 
   const viewBox = useMemo(()=>{
     if(!prov) return `0 0 ${MAP_W} ${MAP_H}`;
@@ -141,9 +136,10 @@ function LandGrab(){
   },[prov]);
 
   const vbScale = useMemo(()=>parseFloat(viewBox.split(" ")[2])/MAP_W,[viewBox]);
-  const sz  = game.mode==="nation" ? 11 : Math.max(13,Math.min(24,Math.round(40*vbScale)));
-  const pillW = sz*1.9, pillH = sz*1.3;
+  const sz      = game.mode==="nation" ? 9 : Math.max(13,Math.min(24,Math.round(40*vbScale)));
+  const pillW   = sz*1.9, pillH = sz*1.3;
 
+  // 사운드
   function sound(ok){try{
     if(!actxRef.current)actxRef.current=new(window.AudioContext||window.webkitAudioContext)();
     const ac=actxRef.current;if(ac.state==="suspended")ac.resume();
@@ -165,18 +161,22 @@ function LandGrab(){
   }catch(e){}}
   function stopBgm(){if(bgmRef.current){clearInterval(bgmRef.current);bgmRef.current=null;}}
 
+  // 방 만들기
   async function createRoom(){
     if(!myName.trim()){setError("이름을 입력해주세요");return;}
-    sessionStorage.setItem('ziri_name',myName);sessionStorage.setItem('ziri_color',myColor);
+    sessionStorage.setItem('ziri_name',myName);
     const code=genCode();
+    const builtTeams=Array.from({length:teamCount},(_,i)=>({name:teamNames[i]||TEAM_NAMES[i],color:TEAM_COLORS[i]}));
     await db.ref(`rooms/${code}`).set({
-      game:{mode:"nation",teamCount:0,started:false,provIdx:0,order:[],cleared:false,hostId:myPid},
-      players:{[myPid]:{name:myName.trim(),color:myColor,joinedAt:Date.now(),team:0}}
+      game:{mode:"nation",started:false,provIdx:0,order:[],cleared:false,hostId:myPid,teams:builtTeams},
+      players:{[myPid]:{name:myName.trim(),teamIdx:0,joinedAt:Date.now()}}
     });
     db.ref(`rooms/${code}/players/${myPid}`).onDisconnect().remove();
+    setMyTeamIdx(0);
     setRoomCode(code);setIsHost(true);setPhase("waiting");setError("");
   }
 
+  // 방 참여
   async function joinRoom(){
     const code=inputCode.trim().toUpperCase();
     if(!code||code.length<4){setError("방 코드를 입력해주세요");return;}
@@ -184,10 +184,17 @@ function LandGrab(){
     const snap=await db.ref(`rooms/${code}/game`).get();
     if(!snap.exists()){setError("존재하지 않는 방 코드예요");return;}
     if(snap.val().started){setError("이미 시작된 게임이에요");return;}
-    sessionStorage.setItem('ziri_name',myName);sessionStorage.setItem('ziri_color',myColor);
-    await db.ref(`rooms/${code}/players/${myPid}`).set({name:myName.trim(),color:myColor,joinedAt:Date.now(),team:0});
+    sessionStorage.setItem('ziri_name',myName);
+    // 팀 선택은 대기실에서 → 일단 teamIdx=0으로 입장
+    await db.ref(`rooms/${code}/players/${myPid}`).set({name:myName.trim(),teamIdx:0,joinedAt:Date.now()});
     db.ref(`rooms/${code}/players/${myPid}`).onDisconnect().remove();
     setRoomCode(code);setIsHost(false);setPhase("waiting");setError("");
+  }
+
+  // 팀 변경
+  async function changeTeam(ti){
+    setMyTeamIdx(ti);
+    await db.ref(`rooms/${roomCode}/players/${myPid}/teamIdx`).set(ti);
   }
 
   async function startGame(){
@@ -200,13 +207,14 @@ function LandGrab(){
     await db.ref(`rooms/${roomCode}/game`).update({started:true,order,provIdx:0,cleared:false});
   }
 
-  async function setGameMode(m){ if(isHost) await db.ref(`rooms/${roomCode}/game/mode`).set(m); }
-  async function setTeamCount(c){ if(isHost) await db.ref(`rooms/${roomCode}/game/teamCount`).set(c); }
-  async function joinTeam(tIdx){ await db.ref(`rooms/${roomCode}/players/${myPid}/team`).set(tIdx); }
+  async function setGameMode(m){
+    if(!isHost)return;
+    await db.ref(`rooms/${roomCode}/game/mode`).set(m);
+  }
 
   function leaveRoom(){
     db.ref(`rooms/${roomCode}/players/${myPid}`).remove();
-    setPhase("home");setRoomCode("");setRoomData(null);setIsHost(false);stopBgm();setSel(null);
+    setPhase("home");setRoomCode("");setRoomData(null);setIsHost(false);stopBgm();setSel(null);setMyTeamIdx(null);
   }
 
   async function resetToLobby(){
@@ -215,20 +223,23 @@ function LandGrab(){
     await db.ref(`rooms/${roomCode}/game`).update({started:false,cleared:false,provIdx:0});
   }
 
+  // 게임: 지역 클릭
   function pick(provKey,name){
+    if(myTeamIdx===null)return;
     if(owners[fbk(provKey,name)]!==undefined)return;
     setSel(name);setSelProv(provKey);setInputAns("");setMfb(null);
   }
 
+  // 게임: 정답 제출
   async function submit(){
-    if(!sel||!myPlayer)return;
+    if(!sel||myTeamIdx===null)return;
     if(normalize(inputAns)===normalize(sel)){
       const key=fbk(selProv,sel);
       const ref=db.ref(`rooms/${roomCode}/owners/${key}`);
-      const res=await ref.transaction(cur=>cur!=null?undefined:myPid);
+      const res=await ref.transaction(cur=>cur!=null?undefined:myTeamIdx);
       if(res.committed){
         sound(true);
-        setFlash({name:sel,provKey:selProv,pid:myPid});
+        setFlash({name:sel,provKey:selProv,ti:myTeamIdx});
         setTimeout(()=>setFlash(null),700);
         const newTotal=Object.keys(owners).length+1;
         if(game.mode==="nation"&&newTotal>=TOTAL_REGIONS){
@@ -238,23 +249,19 @@ function LandGrab(){
           if(nowOwned>=provTotal) await db.ref(`rooms/${roomCode}/game`).update({cleared:true});
         }
       } else {
-        sound(false);setMfb({msg:"아깝! 다른 사람이 먼저 차지했어요!"});
-        return;
+        sound(false);setMfb({msg:"아깝! 다른 팀이 먼저 차지했어요!"});return;
       }
       setSel(null);setSelProv(null);setInputAns("");setMfb(null);
     } else {
       sound(false);
-      // 오답 시 페널티
-      const mine=Object.keys(owners).filter(k=>{
-         if(isTeamMode) return players[owners[k]]?.team === myPlayer.team;
-         return owners[k]===myPid;
-      });
+      // 내 팀 땅 하나 잃기
+      const mine=Object.keys(owners).filter(k=>owners[k]===myTeamIdx);
       let lostKey=null;
       if(mine.length){lostKey=mine[Math.floor(Math.random()*mine.length)];await db.ref(`rooms/${roomCode}/owners/${lostKey}`).remove();}
       const parts=lostKey?.split('__');
       const lostName=parts?.[1]||null,lostProvKey=parts?.[0]||null;
-      setMfb({msg:lostName?`땡! 우리 땅 "${lostName}"을(를) 잃었어요!`:"땡! 다시 도전!"});
-      if(lostName){setFlash({name:lostName,provKey:lostProvKey,pid:myPid,lost:true});setTimeout(()=>setFlash(null),900);}
+      setMfb({msg:lostName?`땡! "${lostName}" 땅을 잃었어요!`:"땡! 다시 도전!"});
+      if(lostName){setFlash({name:lostName,provKey:lostProvKey,ti:myTeamIdx,lost:true});setTimeout(()=>setFlash(null),900);}
     }
   }
 
@@ -265,18 +272,11 @@ function LandGrab(){
     else await db.ref(`rooms/${roomCode}/game`).update({cleared:false,provIdx:nextIdx});
   }
 
+  // 지역 렌더링
   const renderRegion=(provKey,r)=>{
     const key=fbk(provKey,r.name);
-    const ownerPid=owners[key];const owned=ownerPid!==undefined;
-    const ownerP=owned?players[ownerPid]:null;
-    
-    // 색상 결정 로직 (팀전/개인전)
-    let color = "#cbd5e1";
-    if(owned && ownerP) {
-      if(isTeamMode) color = TEAM_COLORS[ownerP.team||0];
-      else color = ownerP.color;
-    }
-    
+    const ti=owners[key];const owned=ti!==undefined;
+    const color=owned?(teams[ti]?.color||"#94a3b8"):"#cbd5e1";
     const isF=flash&&flash.name===r.name&&flash.provKey===provKey;
     const isSel=sel===r.name&&selProv===provKey;
     return(
@@ -296,95 +296,112 @@ function LandGrab(){
     );
   };
 
-  // ===== 화면: 홈 / 방만들기 / 참여하기 =====
+  // ===== 홈 =====
   if(phase==="home") return(
     <div style={S.page}><div style={S.card}>
-      <div style={{fontSize:52}}>🗺️</div><h1 style={S.h1}>우리나라 땅따먹기</h1><p style={S.sub}>방을 만들거나 방 코드로 입장하세요</p>
+      <div style={{fontSize:52}}>🗺️</div>
+      <h1 style={S.h1}>우리나라 땅따먹기</h1>
+      <p style={S.sub}>팀을 나눠서 땅따먹기 대결!</p>
       <button onClick={()=>setPhase("creating")} style={{...S.btn,background:"#0f172a",color:"#fff",marginTop:24}}>🏠 방 만들기 (선생님)</button>
       <button onClick={()=>setPhase("joining")}  style={{...S.btn,background:"#3b82f6",color:"#fff",marginTop:10}}>🚪 방 참여하기 (학생)</button>
     </div></div>
   );
+
+  // ===== 방 만들기 =====
   if(phase==="creating") return(
     <div style={S.page}><div style={S.card}>
-      <h2 style={S.h2}>🏠 방 만들기</h2><div style={S.lbl}>내 이름</div>
+      <h2 style={S.h2}>🏠 방 만들기</h2>
+      <div style={S.lbl}>선생님 이름</div>
       <input value={myName} onChange={e=>setMyName(e.target.value)} placeholder="이름 입력" style={S.inp} maxLength={8}/>
-      <div style={{...S.lbl,marginTop:16}}>내 색상 선택</div>
-      <div style={S.colorGrid}>{PALETTE.map(c=><div key={c} onClick={()=>setMyColor(c)} style={{...S.colorDot,background:c,outline:myColor===c?"3px solid #0f172a":"none"}}/>)}</div>
+      <div style={{...S.lbl,marginTop:16}}>팀 수</div>
+      <div style={{display:"flex",gap:8,justifyContent:"center",marginTop:4}}>
+        {[2,3,4].map(n=>(
+          <button key={n} onClick={()=>setTeamCount(n)}
+            style={{...S.btn,width:"auto",padding:"10px 20px",background:teamCount===n?"#0f172a":"#fff",color:teamCount===n?"#fff":"#475569",border:"2px solid #e2e8f0",boxShadow:"none"}}>
+            {n}팀
+          </button>
+        ))}
+      </div>
+      <div style={{...S.lbl,marginTop:14}}>팀 이름 수정 (선택)</div>
+      {Array.from({length:teamCount}).map((_,i)=>(
+        <div key={i} style={{display:"flex",alignItems:"center",gap:8,marginTop:6}}>
+          <div style={{width:14,height:14,borderRadius:"50%",background:TEAM_COLORS[i],flexShrink:0}}/>
+          <input value={teamNames[i]} onChange={e=>{const v=e.target.value;setTeamNames(ns=>ns.map((x,k)=>k===i?v:x));}}
+            style={{...S.inp,flex:1}} maxLength={8}/>
+        </div>
+      ))}
       {error&&<div style={S.err}>{error}</div>}
       <button onClick={createRoom} style={{...S.btn,background:"#0f172a",color:"#fff",marginTop:20}}>방 만들기 →</button>
       <button onClick={()=>{setPhase("home");setError("");}} style={{...S.ghost,marginTop:10,width:"100%"}}>← 돌아가기</button>
     </div></div>
   );
+
+  // ===== 방 참여 =====
   if(phase==="joining") return(
     <div style={S.page}><div style={S.card}>
-      <h2 style={S.h2}>🚪 방 참여하기</h2><div style={S.lbl}>방 코드 (6자리)</div>
-      <input value={inputCode} onChange={e=>setInputCode(e.target.value.toUpperCase())} placeholder="XXXXXX" style={{...S.inp,textAlign:"center",fontSize:22,letterSpacing:4}} maxLength={6}/>
+      <h2 style={S.h2}>🚪 방 참여하기</h2>
+      <div style={S.lbl}>방 코드</div>
+      <input value={inputCode} onChange={e=>setInputCode(e.target.value.toUpperCase())}
+        placeholder="XXXXXX" style={{...S.inp,textAlign:"center",fontSize:24,letterSpacing:5}} maxLength={6}/>
       <div style={{...S.lbl,marginTop:14}}>내 이름</div>
       <input value={myName} onChange={e=>setMyName(e.target.value)} placeholder="이름 입력" style={S.inp} maxLength={8}/>
-      <div style={{...S.lbl,marginTop:14}}>내 색상 선택</div>
-      <div style={S.colorGrid}>{PALETTE.map(c=><div key={c} onClick={()=>setMyColor(c)} style={{...S.colorDot,background:c,outline:myColor===c?"3px solid #0f172a":"none"}}/>)}</div>
       {error&&<div style={S.err}>{error}</div>}
-      <button onClick={joinRoom} style={{...S.btn,background:"#3b82f6",color:"#fff",marginTop:20}}>입장하기 →</button>
+      <button onClick={joinRoom} style={{...S.btn,background:"#3b82f6",color:"#fff",marginTop:20}}>다음 →</button>
       <button onClick={()=>{setPhase("home");setError("");}} style={{...S.ghost,marginTop:10,width:"100%"}}>← 돌아가기</button>
     </div></div>
   );
 
-  // ===== 화면: 대기실 =====
+  // ===== 대기실 =====
   if(phase==="waiting"){
     const playerList=Object.entries(players).sort((a,b)=>a[1].joinedAt-b[1].joinedAt);
+    const myP=players[myPid];
+    const currentTeamIdx=myP?.teamIdx??myTeamIdx??0;
     return(
       <div style={S.page}><div style={S.card}>
-        <div style={{fontSize:36}}>{isHost?"🏠 방장":"⏳ 대기 중"}</div>
-        <div style={{fontSize:12,color:"#94a3b8",margin:"6px 0 4px"}}>친구들에게 방 코드를 알려주세요</div>
-        <div style={{fontSize:34,fontWeight:900,letterSpacing:8,background:"#f1f5f9",borderRadius:14,padding:"12px 20px",margin:"8px 0 12px",color:"#0f172a"}}>{roomCode}</div>
+        <div style={{fontSize:34}}>{isHost?"🏠 방장":"⏳ 대기 중"}</div>
+        <div style={{fontSize:12,color:"#94a3b8",margin:"4px 0 2px"}}>방 코드를 친구들에게 알려주세요</div>
+        <div style={{fontSize:36,fontWeight:900,letterSpacing:8,background:"#f1f5f9",borderRadius:14,padding:"12px 20px",margin:"8px 0",color:"#0f172a"}}>{roomCode}</div>
 
-        {isHost&&(<>
-          <div style={{...S.lbl,marginTop:14,borderTop:"2px dashed #e2e8f0",paddingTop:14}}>1. 인원 설정 (개인전/팀전)</div>
-          <div style={{display:"flex",gap:4,marginBottom:10}}>
-            <button onClick={()=>setTeamCount(0)} style={{...S.modeBtn,...(game.teamCount===0?S.modeBtnOn:{})}}>👤 개인전</button>
-            <button onClick={()=>setTeamCount(2)} style={{...S.modeBtn,...(game.teamCount===2?S.modeBtnOn:{})}}>2팀</button>
-            <button onClick={()=>setTeamCount(3)} style={{...S.modeBtn,...(game.teamCount===3?S.modeBtnOn:{})}}>3팀</button>
-            <button onClick={()=>setTeamCount(4)} style={{...S.modeBtn,...(game.teamCount===4?S.modeBtnOn:{})}}>4팀</button>
-          </div>
-
-          <div style={S.lbl}>2. 지도 모드 선택</div>
-          <button onClick={()=>setGameMode("nation")} style={{...S.modeBtn,...(game.mode==="nation"?S.modeBtnOn:{})}}>🇰🇷 전국 한방</button>
-          <button onClick={()=>setGameMode("all")}    style={{...S.modeBtn,...(game.mode==="all"?S.modeBtnOn:{}),marginTop:4}}>📍 전국 순회</button>
-          <div style={{display:"flex",gap:5,flexWrap:"wrap",justifyContent:"center",marginTop:6}}>
-            {PROVINCES.map(p=><button key={p.key} onClick={()=>setGameMode(p.key)} style={{...S.modeSmall,...(game.mode===p.key?S.modeBtnOn:{})}}>{p.name}</button>)}
-          </div>
-        </>)}
-
-        {isTeamMode && (
-          <div style={{marginTop:14, padding:10, background:"#f8fafc", borderRadius:12}}>
-            <div style={{fontSize:14, fontWeight:700, marginBottom:8}}>내 팀 선택하기</div>
-            <div style={{display:"flex", gap:4, justifyContent:"center"}}>
-              {TEAM_COLORS.slice(0, game.teamCount).map((color, i) => (
-                <button key={i} onClick={()=>joinTeam(i)} style={{padding:"8px", borderRadius:8, border:"none", background:color, color:"#fff", fontWeight:700, opacity:myPlayer?.team===i?1:0.4, cursor:"pointer", flex:1}}>
-                  {i+1}팀
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <div style={{...S.lbl,marginTop:14}}>참여자 ({playerList.length}명)</div>
-        <div style={{display:"flex",flexDirection:"column",gap:5,maxHeight:200,overflowY:"auto",marginBottom:14}}>
-          {playerList.map(([pid,p])=>(
-            <div key={pid} style={{display:"flex",alignItems:"center",gap:10,padding:"7px 12px",background:(isTeamMode?TEAM_COLORS[p.team||0]:p.color)+"22",borderRadius:11,border:`2px solid ${isTeamMode?TEAM_COLORS[p.team||0]:p.color}44`}}>
-              <div style={{width:12,height:12,borderRadius:"50%",background:isTeamMode?TEAM_COLORS[p.team||0]:p.color,flexShrink:0}}/>
-              <span style={{fontWeight:700,color:isTeamMode?TEAM_COLORS[p.team||0]:p.color}}>
-                {isTeamMode ? `[${p.team+1}팀] ` : ''}{p.name}
-              </span>
-              {pid===myPid&&<span style={{fontSize:11,color:"#94a3b8"}}>(나)</span>}
-              {pid===game.hostId&&<span style={{fontSize:11,color:"#f59e0b"}}>👑</span>}
-            </div>
+        {/* 팀 선택 */}
+        <div style={S.lbl}>내 팀 선택</div>
+        <div style={{display:"flex",gap:6,justifyContent:"center",flexWrap:"wrap",marginBottom:12}}>
+          {teams.map((t,i)=>(
+            <button key={i} onClick={()=>changeTeam(i)}
+              style={{fontFamily:"'Jua',sans-serif",padding:"10px 16px",borderRadius:12,border:`3px solid ${t.color}`,
+                background:currentTeamIdx===i?t.color:"#fff",
+                color:currentTeamIdx===i?"#fff":t.color,
+                fontWeight:700,fontSize:14,cursor:"pointer"}}>
+              {t.name}
+            </button>
           ))}
         </div>
 
-        {isHost?(
-          <button onClick={startGame} style={{...S.btn,background:"#22c55e",color:"#fff",fontSize:18}}>🎮 게임 시작!</button>
-        ):(
+        {/* 팀별 참여자 */}
+        <div style={{display:"flex",gap:8,flexWrap:"wrap",justifyContent:"center",marginBottom:14}}>
+          {teams.map((t,i)=>{
+            const members=playerList.filter(([,p])=>p.teamIdx===i);
+            return(
+              <div key={i} style={{flex:"1 1 120px",minWidth:100,background:t.color+"18",border:`2px solid ${t.color}44`,borderRadius:12,padding:"8px 10px"}}>
+                <div style={{fontWeight:800,color:t.color,fontSize:13,marginBottom:4}}>{t.name} ({members.length}명)</div>
+                {members.map(([pid,p])=>(
+                  <div key={pid} style={{fontSize:12,color:"#475569"}}>{p.name}{pid===myPid?" 👈":""}{pid===game.hostId?" 👑":""}</div>
+                ))}
+              </div>
+            );
+          })}
+        </div>
+
+        {isHost&&(<>
+          <div style={S.lbl}>게임 모드</div>
+          <button onClick={()=>setGameMode("nation")} style={{...S.modeBtn,...(game.mode==="nation"?S.modeBtnOn:{})}}>🇰🇷 전국 한방</button>
+          <button onClick={()=>setGameMode("all")}    style={{...S.modeBtn,...(game.mode==="all"?S.modeBtnOn:{}),marginTop:4}}>📍 전국 순회</button>
+          <div style={{display:"flex",gap:5,flexWrap:"wrap",justifyContent:"center",marginTop:5}}>
+            {PROVINCES.map(p=><button key={p.key} onClick={()=>setGameMode(p.key)}
+              style={{...S.modeSmall,...(game.mode===p.key?S.modeBtnOn:{})}}>{p.name}</button>)}
+          </div>
+          <button onClick={startGame} style={{...S.btn,background:"#22c55e",color:"#fff",fontSize:18,marginTop:14}}>🎮 게임 시작!</button>
+        </>)}
+        {!isHost&&(
           <div style={{color:"#64748b",fontSize:13,padding:"10px",background:"#f8fafc",borderRadius:11,border:"2px solid #e2e8f0"}}>방장이 게임을 시작할 때까지 기다려요 ⏳</div>
         )}
         <button onClick={leaveRoom} style={{...S.ghost,marginTop:10,width:"100%"}}>← 나가기</button>
@@ -392,32 +409,20 @@ function LandGrab(){
     );
   }
 
-  // ===== 화면: 결과 =====
+  // ===== 결과 =====
   if(phase==="result"){
     const isEnd=game.cleared==="END";
-    let sorted = [];
-    if(isTeamMode) {
-      // 팀전 랭킹
-      sorted = Array.from({length: game.teamCount}).map((_, i) => ({
-        id: `team_${i}`, name: TEAM_NAMES[i], color: TEAM_COLORS[i], score: scores[`team_${i}`]||0
-      })).sort((a,b)=>b.score-a.score);
-    } else {
-      // 개인전 랭킹
-      sorted = Object.entries(players).map(([pid,p])=>({
-        id: pid, name: p.name + (pid===myPid?" (나)":""), color: p.color, score: scores[pid]||0
-      })).sort((a,b)=>b.score-a.score);
-    }
     const medal=["🥇","🥈","🥉"];
-
+    const sorted=teams.map((t,i)=>({t,i,score:scores[i]||0})).sort((a,b)=>b.score-a.score);
     return(
       <div style={S.page}><div style={S.card}>
         <div style={{fontSize:48}}>{isEnd?"🏆":"🎉"}</div>
         <h2 style={{margin:"4px 0 14px",fontSize:22}}>{isEnd?"게임 종료!":`${prov?.name||""} 클리어!`}</h2>
-        <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:14}}>
-          {sorted.map((row,i)=>(
-            <div key={row.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 14px",background:row.color+"22",borderRadius:11,outline:row.id===myPid||(isTeamMode&&`team_${myPlayer?.team}`===row.id)?`2px solid ${row.color}`:"none"}}>
-              <span style={{fontWeight:800,color:row.color}}>{medal[i]||""} {row.name}</span>
-              <span style={{fontWeight:800}}>{row.score}칸</span>
+        <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:14}}>
+          {sorted.map(({t,i,score},rank)=>(
+            <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 16px",background:t.color+"22",borderRadius:12,border:`2px solid ${t.color}44`,outline:i===myTeamIdx?`3px solid ${t.color}`:"none"}}>
+              <span style={{fontWeight:800,color:t.color}}>{medal[rank]||""} {t.name}{i===myTeamIdx?" (내 팀)":""}</span>
+              <span style={{fontWeight:800,fontSize:18}}>{score}칸</span>
             </div>
           ))}
         </div>
@@ -426,32 +431,18 @@ function LandGrab(){
             {(game.provIdx||0)+1<(game.order||[]).length?`다음: ${PROVINCES[game.order[(game.provIdx||0)+1]]?.name} ▶`:"최종 결과 ▶"}
           </button>
         )}
-        {isHost&&(
-          <button onClick={resetToLobby} style={{...S.btn,background:"#6366f1",color:"#fff",marginTop:8}}>🔄 다시 하기 (대기실로)</button>
-        )}
-        {!isHost&&(
-          <div style={{color:"#64748b",fontSize:13,padding:"10px",background:"#f8fafc",borderRadius:11,border:"2px solid #e2e8f0",marginTop:8}}>방장이 다음을 선택 중이에요 ⏳</div>
-        )}
+        {isHost&&(<button onClick={resetToLobby} style={{...S.btn,background:"#6366f1",color:"#fff",marginTop:8}}>🔄 다시 하기</button>)}
+        {!isHost&&(<div style={{color:"#64748b",fontSize:13,padding:"10px",background:"#f8fafc",borderRadius:11,border:"2px solid #e2e8f0",marginTop:8}}>방장이 다음을 선택 중이에요 ⏳</div>)}
         <button onClick={leaveRoom} style={{...S.ghost,marginTop:10,width:"100%"}}>← 나가기</button>
       </div></div>
     );
   }
 
-  // ===== 화면: 게임 =====
+  // ===== 게임 =====
   if(phase!=="game") return null;
-  const selProvName=selProv?PROVINCES.find(p=>p.key===selProv)?.name:"";
-  const myColorNow = isTeamMode ? TEAM_COLORS[myPlayer?.team||0] : myPlayer?.color;
 
-  let sortedScores = [];
-  if(isTeamMode) {
-    sortedScores = Array.from({length: game.teamCount}).map((_, i) => ({
-      id: `team_${i}`, name: `${i+1}팀`, color: TEAM_COLORS[i], score: scores[`team_${i}`]||0
-    })).sort((a,b)=>b.score-a.score);
-  } else {
-    sortedScores = Object.entries(players).map(([pid,p])=>({
-      id: pid, name: p.name, color: p.color, score: scores[pid]||0
-    })).sort((a,b)=>b.score-a.score).slice(0, 10); // 상위 10명만
-  }
+  const myTeam = myTeamIdx!==null ? teams[myTeamIdx] : null;
+  const selProvName = selProv ? PROVINCES.find(p=>p.key===selProv)?.name : "";
 
   return(
     <div style={S.page}>
@@ -463,59 +454,48 @@ function LandGrab(){
           </div>
           <button onClick={()=>setBgmOn(v=>!v)} style={{...S.ghost,fontSize:14,padding:"2px 8px"}}>{bgmOn?"🔊":"🔇"}</button>
         </div>
-        {myPlayer&&(
+        {myTeam&&(
           <div style={{display:"flex",justifyContent:"center",marginBottom:5}}>
-            <div style={{background:myColorNow,color:"#fff",fontWeight:700,fontSize:13,padding:"4px 14px",borderRadius:20,boxShadow:"0 2px 0 rgba(0,0,0,.15)"}}>
-              👤 {isTeamMode ? `[${myPlayer.team+1}팀] ` : ''}{myPlayer.name}
+            <div style={{background:myTeam.color,color:"#fff",fontWeight:700,fontSize:14,padding:"5px 16px",borderRadius:20,boxShadow:"0 2px 0 rgba(0,0,0,.15)"}}>
+              🏳️ 나는 {myTeam.name}
             </div>
           </div>
         )}
-        {/* 점수판 */}
-        <div style={{display:"flex",gap:4,flexWrap:"wrap",justifyContent:"center"}}>
-          {sortedScores.map((row)=>(
-            <div key={row.id} style={{display:"flex",alignItems:"center",gap:4,padding:"3px 9px",background:"#fff",borderRadius:9,border:`2px solid ${row.color}`,boxShadow:row.id===myPid||(isTeamMode&&`team_${myPlayer?.team}`===row.id)?`0 0 0 2px ${row.color}`:"none",fontSize:12}}>
-              <div style={{width:8,height:8,borderRadius:"50%",background:row.color}}/>
-              <span style={{maxWidth:44,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{row.name}</span>
-              <b style={{color:row.color}}>{row.score}</b>
+        {/* 팀 점수 */}
+        <div style={{display:"flex",gap:6,justifyContent:"center",flexWrap:"wrap"}}>
+          {teams.map((t,i)=>(
+            <div key={i} style={{display:"flex",alignItems:"center",gap:5,padding:"5px 12px",background:"#fff",borderRadius:10,border:`2px solid ${t.color}`,boxShadow:i===myTeamIdx?`0 0 0 2px ${t.color}`:"none"}}>
+              <div style={{width:10,height:10,borderRadius:"50%",background:t.color}}/>
+              <span style={{fontSize:13}}>{t.name}</span>
+              <b style={{color:t.color,fontSize:16}}>{scores[i]||0}</b>
             </div>
           ))}
-          <div style={{fontSize:11,color:"#64748b",background:"#fff",borderRadius:9,padding:"3px 9px",border:"2px solid #e2e8f0"}}>
+          <div style={{fontSize:12,color:"#64748b",background:"#fff",borderRadius:10,padding:"5px 10px",border:"2px solid #e2e8f0"}}>
             {game.mode==="nation"?`${totalOwned}/${TOTAL_REGIONS}`:`${provOwned}/${provTotal}`}
           </div>
         </div>
       </div>
 
-      {/* 지도 영역 (전국 모드일 때 스크롤 가능) */}
+      {/* 지도 */}
       <div style={{maxWidth:720,margin:"0 auto"}}>
-        <div style={{
-          position:"relative",width:"100%",maxWidth:560,margin:"0 auto",
-          aspectRatio:"1/1", borderRadius:16, background:"#fff",
-          border:"2px solid #e2e8f0",boxShadow:"0 8px 24px -8px rgba(0,0,0,.2)",
-          overflow:"auto", WebkitOverflowScrolling:"touch" // 모바일 스크롤 부드럽게
-        }}>
-          {/* 스크롤되는 내부 영역 (전국 모드면 강제로 크게 만듦) */}
-          <div style={{
-            width: game.mode==="nation" ? 900 : "100%",
-            height: game.mode==="nation" ? 1260 : "100%",
-            position: "relative"
-          }}>
-            <svg viewBox={game.mode==="nation" ? `0 0 ${MAP_W} ${MAP_H}` : viewBox} preserveAspectRatio="xMidYMid meet"
-              style={{position:"absolute",inset:0,width:"100%",height:"100%"}}>
-              <image href={MAP_BG} xlinkHref={MAP_BG} x="0" y="0" width={MAP_W} height={MAP_H} preserveAspectRatio="none"/>
-              {game.mode==="nation"
-                ? PROVINCES.map(p=>p.regions.map(r=>renderRegion(p.key,r)))
-                : prov?.regions.map(r=>renderRegion(prov.key,r))
-              }
-            </svg>
-          </div>
+        <div style={{position:"relative",width:"100%",maxWidth:game.mode==="nation"?460:560,margin:"0 auto",
+          aspectRatio:game.mode==="nation"?`${MAP_W}/${MAP_H}`:"1/1",
+          borderRadius:16,overflow:"hidden",background:"#fff",
+          border:"2px solid #e2e8f0",boxShadow:"0 8px 24px -8px rgba(0,0,0,.2)"}}>
+          <svg viewBox={viewBox} preserveAspectRatio="xMidYMid meet"
+            style={{position:"absolute",inset:0,width:"100%",height:"100%"}}>
+            <image href={MAP_BG} xlinkHref={MAP_BG} x="0" y="0" width={MAP_W} height={MAP_H} preserveAspectRatio="none"/>
+            {game.mode==="nation"
+              ? PROVINCES.map(p=>p.regions.map(r=>renderRegion(p.key,r)))
+              : prov?.regions.map(r=>renderRegion(prov.key,r))
+            }
+          </svg>
         </div>
       </div>
 
       <div style={{maxWidth:720,margin:"8px auto 0",textAlign:"center"}}>
         <button onClick={leaveRoom} style={S.ghost}>← 나가기</button>
-        <span style={{fontSize:11,color:"#94a3b8",marginLeft:8}}>
-          {game.mode==="nation"?"(전국) 지도를 드래그해서 빈 땅을 탭해요!":"빈 땅 탭 → 초성 맞추기 → 내 땅!"}
-        </span>
+        <span style={{fontSize:11,color:"#94a3b8",marginLeft:8}}>빈 땅 탭 → 초성 맞추기 → 내 팀 땅!</span>
       </div>
 
       {/* 답변 모달 */}
@@ -533,10 +513,10 @@ function LandGrab(){
               onChange={e=>{setInputAns(e.target.value);setMfb(null);}}
               style={{fontFamily:"'Jua',sans-serif",fontSize:20,padding:"11px 14px",borderRadius:13,border:"2px solid #e2e8f0",width:"100%",textAlign:"center",outline:"none"}}/>
             {mfb&&<div style={{fontSize:13,marginTop:8,fontWeight:700,color:"#dc2626"}}>{mfb.msg}</div>}
-            {myPlayer&&(
+            {myTeam&&(
               <button onClick={submit}
-                style={{fontFamily:"'Jua',sans-serif",marginTop:14,width:"100%",fontSize:17,padding:13,borderRadius:13,border:"none",background:myColorNow,color:"#fff",fontWeight:700,cursor:"pointer",boxShadow:"0 4px 0 rgba(0,0,0,.18)"}}>
-                {myPlayer.name} · 이 땅 차지! 🚩
+                style={{fontFamily:"'Jua',sans-serif",marginTop:14,width:"100%",fontSize:17,padding:13,borderRadius:13,border:"none",background:myTeam.color,color:"#fff",fontWeight:700,cursor:"pointer",boxShadow:"0 4px 0 rgba(0,0,0,.18)"}}>
+                {myTeam.name} 땅 차지! 🚩
               </button>
             )}
             <button onClick={()=>{setSel(null);setSelProv(null);setMfb(null);}}
@@ -553,7 +533,7 @@ function LandGrab(){
 const F = "'Jua','Apple SD Gothic Neo','Malgun Gothic',sans-serif";
 const S = {
   page:     {fontFamily:F,minHeight:"100vh",background:"linear-gradient(160deg,#eff6ff,#fefce8)",padding:"12px 10px",boxSizing:"border-box"},
-  card:     {maxWidth:400,margin:"16px auto",background:"#fff",borderRadius:22,padding:"24px 20px",textAlign:"center",boxShadow:"0 20px 50px -12px rgba(0,0,0,.18)",border:"3px solid #bae6fd"},
+  card:     {maxWidth:420,margin:"16px auto",background:"#fff",borderRadius:22,padding:"24px 20px",textAlign:"center",boxShadow:"0 20px 50px -12px rgba(0,0,0,.18)",border:"3px solid #bae6fd"},
   h1:       {fontSize:26,margin:"4px 0",color:"#0f172a"},
   h2:       {fontSize:20,margin:"0 0 14px",color:"#0f172a"},
   sub:      {fontSize:13,color:"#64748b",margin:"0 0 4px"},
@@ -561,11 +541,9 @@ const S = {
   inp:      {fontFamily:F,fontSize:16,padding:"10px 13px",borderRadius:12,border:"2px solid #e2e8f0",width:"100%",outline:"none"},
   btn:      {fontFamily:F,width:"100%",fontSize:15,padding:"13px",borderRadius:13,border:"none",cursor:"pointer",fontWeight:700,boxShadow:"0 4px 0 rgba(0,0,0,.1)"},
   ghost:    {fontFamily:F,fontSize:13,padding:"7px 14px",borderRadius:10,border:"2px solid #e2e8f0",background:"#fff",color:"#64748b",cursor:"pointer"},
-  modeBtn:  {fontFamily:F,flex:1,fontSize:13,padding:"8px 0",borderRadius:11,border:"2px solid #e2e8f0",background:"#fff",color:"#475569",cursor:"pointer"},
+  modeBtn:  {fontFamily:F,width:"100%",fontSize:14,padding:"9px",borderRadius:11,border:"2px solid #e2e8f0",background:"#fff",color:"#475569",cursor:"pointer"},
   modeBtnOn:{background:"#0f172a",color:"#fff",borderColor:"#0f172a"},
   modeSmall:{fontFamily:F,fontSize:12,padding:"6px 10px",borderRadius:9,border:"2px solid #e2e8f0",background:"#fff",color:"#475569",cursor:"pointer"},
-  colorGrid:{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:6,marginTop:5},
-  colorDot: {width:34,height:34,borderRadius:"50%",cursor:"pointer",border:"2px solid rgba(255,255,255,0.4)"},
   err:      {fontSize:12,color:"#ef4444",marginTop:8,padding:"7px",background:"#fef2f2",borderRadius:8},
   overlay:  {position:"fixed",inset:0,background:"rgba(15,23,42,.5)",display:"flex",alignItems:"center",justifyContent:"center",padding:16,zIndex:50},
   modal:    {background:"#fff",borderRadius:22,padding:"22px 20px",width:"min(380px,94vw)",textAlign:"center",boxShadow:"0 25px 60px rgba(0,0,0,.3)"},
