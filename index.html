@@ -4,32 +4,46 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>우리나라 땅따먹기 🗺️</title>
-  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
-  <style>* { box-sizing: border-box; } body { margin: 0; padding: 0; user-select: none; }</style>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 0; user-select: none; }
+    #boot {
+      font-family: 'Jua','Apple SD Gothic Neo','Malgun Gothic',sans-serif;
+      min-height: 100vh; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 16px;
+      background: linear-gradient(160deg,#eff6ff,#fefce8); color: #475569; text-align: center;
+    }
+    #boot .spin {
+      width: 46px; height: 46px; border-radius: 50%;
+      border: 5px solid #cbd5e1; border-top-color: #3b82f6;
+      animation: bootspin 0.9s linear infinite;
+    }
+    @keyframes bootspin { to { transform: rotate(360deg); } }
+    #boot .emoji { font-size: 46px; }
+    #boot .msg { font-size: 15px; }
+    #boot .err { display:none; font-size: 13px; color:#dc2626; max-width: 300px; line-height: 1.6; }
+    #boot button {
+      font-family: inherit; font-size: 14px; padding: 9px 18px; border-radius: 11px;
+      border: none; background: #3b82f6; color: #fff; font-weight: 700; cursor: pointer;
+    }
+  </style>
 </head>
 <body>
-<div id="root"></div>
+<div id="root">
+  <div id="boot">
+    <div class="emoji">🗺️</div>
+    <div class="spin" id="bootspin"></div>
+    <div class="msg" id="bootmsg">게임을 불러오는 중...</div>
+    <div class="err" id="booterr">
+      게임을 불러오지 못했어요 😢<br>인터넷 연결을 확인하고 새로고침 해주세요.
+      <br><br><button onclick="location.reload()">🔄 새로고침</button>
+    </div>
+  </div>
+</div>
 
-<script>
-  const firebaseConfig = {
-    apiKey:            "AIzaSyAWRO3rxV5xB296DwKKkNwzi7JUJjgrLXQ",
-    authDomain:        "koreamapziri.firebaseapp.com",
-    databaseURL:       "https://koreamapziri-default-rtdb.firebaseio.com",
-    projectId:         "koreamapziri",
-    storageBucket:     "koreamapziri.firebasestorage.app",
-    messagingSenderId: "64022812660",
-    appId:             "1:64022812660:web:1f080022564259a3fd8ba1"
-  };
-  firebase.initializeApp(firebaseConfig);
-  const db = firebase.database();
-</script>
-
-<script type="text/babel">
+<script type="text/babel" data-presets="react" id="appcode">
+const db = window.db;
 const { useState, useEffect, useMemo, useRef } = React;
 
 const MAP_BG = "./map.jpg";
@@ -814,6 +828,79 @@ const S={
 };
 
 ReactDOM.createRoot(document.getElementById('root')).render(<LandGrab />);
+</script>
+
+<script>
+/* ── 안정적인 라이브러리 로더: 기본 CDN 실패 시 대체 CDN으로 자동 재시도 ── */
+(function () {
+  var firebaseConfig = {
+    apiKey:            "AIzaSyAWRO3rxV5xB296DwKKkNwzi7JUJjgrLXQ",
+    authDomain:        "koreamapziri.firebaseapp.com",
+    databaseURL:       "https://koreamapziri-default-rtdb.firebaseio.com",
+    projectId:         "koreamapziri",
+    storageBucket:     "koreamapziri.firebasestorage.app",
+    messagingSenderId: "64022812660",
+    appId:             "1:64022812660:web:1f080022564259a3fd8ba1"
+  };
+
+  function setMsg(t){ var e=document.getElementById('bootmsg'); if(e) e.textContent=t; }
+  function showError(){
+    var s=document.getElementById('bootspin'); if(s) s.style.display='none';
+    var m=document.getElementById('bootmsg');  if(m) m.style.display='none';
+    var er=document.getElementById('booterr'); if(er) er.style.display='block';
+  }
+
+  // 각 라이브러리를 여러 CDN 중 성공하는 곳에서 로드
+  function loadOne(urls, done){
+    var i=0;
+    (function next(){
+      if(i>=urls.length){ showError(); return; }
+      var s=document.createElement('script');
+      s.src=urls[i++];
+      s.onload=function(){ done(); };
+      s.onerror=function(){ next(); };
+      document.head.appendChild(s);
+    })();
+  }
+
+  // 순차 로드
+  function chain(steps, done){
+    var i=0;
+    (function next(){
+      if(i>=steps.length){ done(); return; }
+      loadOne(steps[i++], next);
+    })();
+  }
+
+  setMsg('게임 엔진을 불러오는 중...');
+  chain([
+    // React (Cloudflare 우선, 실패 시 unpkg)
+    ["https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js",
+     "https://unpkg.com/react@18.2.0/umd/react.production.min.js"],
+    ["https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js",
+     "https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js"],
+    // Babel (실시간 변환기)
+    ["https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.24.7/babel.min.js",
+     "https://unpkg.com/@babel/standalone@7.24.7/babel.min.js"],
+    // Firebase (Google gstatic 우선, 한국에서 매우 안정적)
+    ["https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js",
+     "https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.0/firebase-app-compat.min.js"],
+    ["https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js",
+     "https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.0/firebase-database-compat.min.js"]
+  ], function(){
+    try {
+      setMsg('게임을 준비하는 중...');
+      // Firebase 초기화
+      firebase.initializeApp(firebaseConfig);
+      window.db = firebase.database();
+      // 앱 코드(JSX)를 변환 → 실행
+      Babel.transformScriptTags();
+    } catch (e) {
+      console.error(e);
+      showError();
+    }
+  });
+})();
 </script>
 </body>
 </html>
