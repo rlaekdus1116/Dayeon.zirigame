@@ -106,6 +106,8 @@ function LandGrab(){
   const [teamCount, setTeamCount] = useState(2);
   const [teamNames, setTeamNames] = useState([...TEAM_NAMES]);
   const [roomData,  setRoomData]  = useState(null);
+  const [hostPlays, setHostPlays] = useState(false);   // 선생님도 팀에 참여할지
+  const [showRank,  setShowRank]  = useState(false);   // 중간 순위 오버레이
 
   /* ── 1인용 상태 ── */
   const [soloType,    setSoloType]    = useState("practice"); // "practice" | "exam"
@@ -135,6 +137,13 @@ function LandGrab(){
     Object.values(owners).forEach(ti=>{if(ti>=0&&ti<s.length)s[ti]++;});
     return s;
   },[owners,teams]);
+  const stats   =roomData?.stats||{};   // {pid:{name,teamIdx,wrong,lost}}
+
+  /* ── 내 팀 자동 동기화 (대기실에서 팀을 안 눌러도 클릭이 되도록) ── */
+  useEffect(()=>{
+    const me=players[myPid];
+    if(me&&me.teamIdx!=null&&myTeamIdx===null) setMyTeamIdx(me.teamIdx);
+  },[roomData]);
 
   /* ── 팀전 게임 상태 전환 ── */
   useEffect(()=>{
@@ -145,6 +154,13 @@ function LandGrab(){
     if(phase==="result" &&g.started&&!g.cleared) {setPhase("game");}
     if((phase==="game"||phase==="result")&&!g.started){setPhase("waiting");setSel(null);stopBgm();}
   },[roomData]);
+
+  /* ── 통계 순위 (오답 많이 → 땅 많이 뺏긴 사람) ── */
+  const lostRank=useMemo(()=>Object.entries(stats)
+    .map(([pid,v])=>({pid,name:v.name||"?",teamIdx:v.teamIdx,wrong:v.wrong||0,lost:v.lost||0}))
+    .filter(p=>p.wrong>0||p.lost>0)
+    .sort((a,b)=>(b.lost-a.lost)||(b.wrong-a.wrong)),
+  [stats]);
 
   /* ── 팀전 파생 ── */
   const prov=(game.started&&game.mode!=="nation"&&game.order?.length>0)?PROVINCES[game.order[game.provIdx||0]]:null;
@@ -265,12 +281,19 @@ function LandGrab(){
     sessionStorage.setItem('ziri_name',myName);
     const code=genCode();
     const builtTeams=Array.from({length:teamCount},(_,i)=>({name:teamNames[i]||TEAM_NAMES[i],color:TEAM_COLORS[i]}));
-    await db.ref(`rooms/${code}`).set({
-      game:{mode:"nation",started:false,provIdx:0,order:[],cleared:false,hostId:myPid,teams:builtTeams},
-      players:{[myPid]:{name:myName.trim(),teamIdx:0,joinedAt:Date.now()}}
-    });
-    db.ref(`rooms/${code}/players/${myPid}`).onDisconnect().remove();
-    setMyTeamIdx(0);setRoomCode(code);setIsHost(true);setPhase("waiting");setError("");
+    const roomObj={
+      game:{mode:"nation",started:false,provIdx:0,order:[],cleared:false,hostId:myPid,teams:builtTeams,hostPlays},
+      players:{}
+    };
+    if(hostPlays) roomObj.players[myPid]={name:myName.trim(),teamIdx:0,joinedAt:Date.now()};
+    await db.ref(`rooms/${code}`).set(roomObj);
+    if(hostPlays){
+      db.ref(`rooms/${code}/players/${myPid}`).onDisconnect().remove();
+      setMyTeamIdx(0);
+    } else {
+      setMyTeamIdx(null);   // 심판(미참여)
+    }
+    setRoomCode(code);setIsHost(true);setPhase("waiting");setError("");
   }
   async function joinRoom(){
     const code=inputCode.trim().toUpperCase();
@@ -282,6 +305,7 @@ function LandGrab(){
     sessionStorage.setItem('ziri_name',myName);
     await db.ref(`rooms/${code}/players/${myPid}`).set({name:myName.trim(),teamIdx:0,joinedAt:Date.now()});
     db.ref(`rooms/${code}/players/${myPid}`).onDisconnect().remove();
+    setMyTeamIdx(0);
     setRoomCode(code);setIsHost(false);setPhase("waiting");setError("");
   }
   async function changeTeam(ti){
@@ -295,7 +319,13 @@ function LandGrab(){
     if(mode==="all")order=PROVINCES.map((_,i)=>i);
     else if(mode!=="nation")order=[PROVINCES.findIndex(p=>p.key===mode)];
     await db.ref(`rooms/${roomCode}/owners`).remove();
+    await db.ref(`rooms/${roomCode}/stats`).remove();
     await db.ref(`rooms/${roomCode}/game`).update({started:true,order,provIdx:0,cleared:false});
+  }
+  /* ── 호스트: 지금 바로 종료 → 최종 순위 ── */
+  async function endGameNow(){
+    if(!isHost)return;
+    await db.ref(`rooms/${roomCode}/game`).update({cleared:"END"});
   }
   async function setGameMode(m){if(!isHost)return;await db.ref(`rooms/${roomCode}/game/mode`).set(m);}
   function leaveRoom(){
@@ -305,6 +335,7 @@ function LandGrab(){
   async function resetToLobby(){
     if(!isHost)return;
     await db.ref(`rooms/${roomCode}/owners`).remove();
+    await db.ref(`rooms/${roomCode}/stats`).remove();
     await db.ref(`rooms/${roomCode}/game`).update({started:false,cleared:false,provIdx:0});
   }
 
@@ -333,6 +364,16 @@ function LandGrab(){
       let lostKey=null;
       if(mine.length){lostKey=mine[Math.floor(Math.random()*mine.length)];await db.ref(`rooms/${roomCode}/owners/${lostKey}`).remove();}
       const parts=lostKey?.split('__');const lostName=parts?.[1]||null,lostProvKey=parts?.[0]||null;
+      // 통계 기록: 오답 +1, 땅을 실제로 잃었으면 lost +1
+      const didLose=!!lostKey;
+      db.ref(`rooms/${roomCode}/stats/${myPid}`).transaction(s=>{
+        s=s||{wrong:0,lost:0};
+        s.wrong=(s.wrong||0)+1;
+        if(didLose) s.lost=(s.lost||0)+1;
+        s.name=myName.trim()||players[myPid]?.name||"?";
+        s.teamIdx=myTeamIdx;
+        return s;
+      });
       setMfb({msg:lostName?`땡! "${lostName}" 땅을 잃었어요!`:"땡! 다시 도전!"});
       if(lostName){setFlash({name:lostName,provKey:lostProvKey,ti:myTeamIdx,lost:true});setTimeout(()=>setFlash(null),900);}
     }
@@ -343,6 +384,38 @@ function LandGrab(){
     if(nextIdx>=(game.order||[]).length)await db.ref(`rooms/${roomCode}/game`).update({cleared:"END"});
     else await db.ref(`rooms/${roomCode}/game`).update({cleared:false,provIdx:nextIdx});
   }
+
+  /* ── 순위 패널 (팀 누적 점수 + 가장 많이 뺏긴 사람) ── */
+  const rankPanel=()=>{
+    const medal=["🥇","🥈","🥉"];
+    const sorted=teams.map((t,i)=>({t,i,score:scores[i]||0})).sort((a,b)=>b.score-a.score);
+    return(
+      <div>
+        <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:14}}>
+          {sorted.map(({t,i,score},rank)=>(
+            <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 16px",background:t.color+"22",borderRadius:12,border:`2px solid ${t.color}44`,outline:i===myTeamIdx?`3px solid ${t.color}`:"none"}}>
+              <span style={{fontWeight:800,color:t.color}}>{medal[rank]||`${rank+1}.`} {t.name}{i===myTeamIdx?" (내 팀)":""}</span>
+              <span style={{fontWeight:800,fontSize:18}}>{score}칸</span>
+            </div>
+          ))}
+        </div>
+        {lostRank.length>0&&(
+          <div style={{background:"#fff7ed",borderRadius:12,padding:"12px 14px",border:"2px solid #fed7aa",textAlign:"left"}}>
+            <div style={{fontWeight:800,color:"#c2410c",fontSize:13,marginBottom:8}}>😵 땅을 가장 많이 뺏긴 사람</div>
+            {lostRank.slice(0,3).map((p,idx)=>{
+              const tc=teams[p.teamIdx]?.color||"#94a3b8";
+              return(
+                <div key={p.pid} style={{display:"flex",justifyContent:"space-between",alignItems:"center",fontSize:13,padding:"4px 0"}}>
+                  <span><b style={{color:tc}}>●</b> {idx+1}. {p.name} <span style={{color:"#94a3b8"}}>({teams[p.teamIdx]?.name||"?"})</span></span>
+                  <span style={{color:"#475569"}}>뺏김 <b style={{color:"#dc2626"}}>{p.lost}</b> · 오답 {p.wrong}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   /* ── 렌더링: 지역 (팀전) ── */
   const renderTeamRegion=(provKey,r)=>{
@@ -438,6 +511,20 @@ function LandGrab(){
             style={{...S.inp,flex:1}} maxLength={8}/>
         </div>
       ))}
+      <div style={{...S.lbl,marginTop:16}}>선생님도 게임에 참여하나요?</div>
+      <div style={{display:"flex",gap:8,marginTop:4}}>
+        <button onClick={()=>setHostPlays(false)}
+          style={{...S.btn,flex:1,boxShadow:"none",border:`2px solid ${!hostPlays?"#0f172a":"#e2e8f0"}`,background:!hostPlays?"#0f172a":"#fff",color:!hostPlays?"#fff":"#475569"}}>
+          🙅 참여 안 함 (심판)
+        </button>
+        <button onClick={()=>setHostPlays(true)}
+          style={{...S.btn,flex:1,boxShadow:"none",border:`2px solid ${hostPlays?"#0f172a":"#e2e8f0"}`,background:hostPlays?"#0f172a":"#fff",color:hostPlays?"#fff":"#475569"}}>
+          🙋 참여 함
+        </button>
+      </div>
+      <div style={{fontSize:11,color:"#94a3b8",marginTop:6,textAlign:"left"}}>
+        {hostPlays?"선생님도 한 팀에 들어가 같이 땅을 차지해요.":"선생님은 게임을 진행·관리만 하고 팀에는 들어가지 않아요."}
+      </div>
       {error&&<div style={S.err}>{error}</div>}
       <button onClick={createRoom} style={{...S.btn,background:"#0f172a",color:"#fff",marginTop:20}}>방 만들기 →</button>
       <button onClick={()=>{setPhase("home");setError("");}} style={{...S.ghost,marginTop:10,width:"100%"}}>← 돌아가기</button>
@@ -469,16 +556,22 @@ function LandGrab(){
         <div style={{fontSize:34}}>{isHost?"🏠 방장":"⏳ 대기 중"}</div>
         <div style={{fontSize:12,color:"#94a3b8",margin:"4px 0 2px"}}>방 코드를 친구들에게 알려주세요</div>
         <div style={{fontSize:36,fontWeight:900,letterSpacing:8,background:"#f1f5f9",borderRadius:14,padding:"12px 20px",margin:"8px 0",color:"#0f172a"}}>{roomCode}</div>
-        <div style={S.lbl}>내 팀 선택</div>
-        <div style={{display:"flex",gap:6,justifyContent:"center",flexWrap:"wrap",marginBottom:12}}>
-          {teams.map((t,i)=>(
-            <button key={i} onClick={()=>changeTeam(i)}
-              style={{fontFamily:"'Jua',sans-serif",padding:"10px 16px",borderRadius:12,border:`3px solid ${t.color}`,
-                background:currentTeamIdx===i?t.color:"#fff",color:currentTeamIdx===i?"#fff":t.color,fontWeight:700,fontSize:14,cursor:"pointer"}}>
-              {t.name}
-            </button>
-          ))}
-        </div>
+        {(!isHost||game.hostPlays)?(<>
+          <div style={S.lbl}>내 팀 선택</div>
+          <div style={{display:"flex",gap:6,justifyContent:"center",flexWrap:"wrap",marginBottom:12}}>
+            {teams.map((t,i)=>(
+              <button key={i} onClick={()=>changeTeam(i)}
+                style={{fontFamily:"'Jua',sans-serif",padding:"10px 16px",borderRadius:12,border:`3px solid ${t.color}`,
+                  background:currentTeamIdx===i?t.color:"#fff",color:currentTeamIdx===i?"#fff":t.color,fontWeight:700,fontSize:14,cursor:"pointer"}}>
+                {t.name}
+              </button>
+            ))}
+          </div>
+        </>):(
+          <div style={{fontSize:13,color:"#475569",padding:"10px",background:"#eef2ff",borderRadius:11,border:"2px solid #c7d2fe",marginBottom:12}}>
+            🧑‍🏫 선생님은 <b>심판</b>이에요. 팀에는 들어가지 않고 게임만 진행해요.
+          </div>
+        )}
         <div style={{display:"flex",gap:8,flexWrap:"wrap",justifyContent:"center",marginBottom:14}}>
           {teams.map((t,i)=>{
             const members=playerList.filter(([,p])=>p.teamIdx===i);
@@ -511,23 +604,16 @@ function LandGrab(){
   /* ── 팀전 결과 ── */
   if(phase==="result"){
     const isEnd=game.cleared==="END";
-    const medal=["🥇","🥈","🥉"];
-    const sorted=teams.map((t,i)=>({t,i,score:scores[i]||0})).sort((a,b)=>b.score-a.score);
     return(
       <div style={S.page}><div style={S.card}>
         <div style={{fontSize:48}}>{isEnd?"🏆":"🎉"}</div>
-        <h2 style={{margin:"4px 0 14px",fontSize:22}}>{isEnd?"게임 종료!":`${prov?.name||""} 클리어!`}</h2>
-        <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:14}}>
-          {sorted.map(({t,i,score},rank)=>(
-            <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 16px",background:t.color+"22",borderRadius:12,border:`2px solid ${t.color}44`,outline:i===myTeamIdx?`3px solid ${t.color}`:"none"}}>
-              <span style={{fontWeight:800,color:t.color}}>{medal[rank]||""} {t.name}{i===myTeamIdx?" (내 팀)":""}</span>
-              <span style={{fontWeight:800,fontSize:18}}>{score}칸</span>
-            </div>
-          ))}
-        </div>
-        {isHost&&!isEnd&&<button onClick={nextProv} style={{...S.btn,background:"#0f172a",color:"#fff"}}>{(game.provIdx||0)+1<(game.order||[]).length?`다음 ▶`:"최종 결과 ▶"}</button>}
-        {isHost&&<button onClick={resetToLobby} style={{...S.btn,background:"#6366f1",color:"#fff",marginTop:8}}>🔄 다시 하기</button>}
-        {!isHost&&<div style={{color:"#64748b",fontSize:13,padding:"10px",background:"#f8fafc",borderRadius:11,border:"2px solid #e2e8f0",marginTop:8}}>방장이 다음을 선택 중이에요 ⏳</div>}
+        <h2 style={{margin:"4px 0 2px",fontSize:22}}>{isEnd?"🏁 최종 순위":`${prov?.name||""} 클리어!`}</h2>
+        <div style={{fontSize:12,color:"#94a3b8",marginBottom:14}}>지금까지 차지한 땅 누적 합계</div>
+        {rankPanel()}
+        {isHost&&!isEnd&&<button onClick={nextProv} style={{...S.btn,background:"#0f172a",color:"#fff",marginTop:6}}>{(game.provIdx||0)+1<(game.order||[]).length?`다음 지역 ▶`:"최종 결과 ▶"}</button>}
+        {isHost&&!isEnd&&<button onClick={endGameNow} style={{...S.btn,background:"#dc2626",color:"#fff",marginTop:8}}>🏁 여기서 종료 (최종 순위)</button>}
+        {isHost&&<button onClick={resetToLobby} style={{...S.btn,background:"#6366f1",color:"#fff",marginTop:8}}>🔄 처음부터 다시</button>}
+        {!isHost&&!isEnd&&<div style={{color:"#64748b",fontSize:13,padding:"10px",background:"#f8fafc",borderRadius:11,border:"2px solid #e2e8f0",marginTop:8}}>방장이 다음을 선택 중이에요 ⏳</div>}
         <button onClick={leaveRoom} style={{...S.ghost,marginTop:10,width:"100%"}}>← 나가기</button>
       </div></div>
     );
@@ -746,6 +832,13 @@ function LandGrab(){
               </div>
             </div>
           )}
+          {isHost&&!hostPlays&&myTeamIdx===null&&(
+            <div style={{display:"flex",justifyContent:"center",marginBottom:5}}>
+              <div style={{background:"#6366f1",color:"#fff",fontWeight:700,fontSize:13,padding:"5px 16px",borderRadius:20}}>
+                🧑‍🏫 선생님(심판) — 진행만 해요
+              </div>
+            </div>
+          )}
           <div style={{display:"flex",gap:6,justifyContent:"center",flexWrap:"wrap"}}>
             {teams.map((t,i)=>(
               <div key={i} style={{display:"flex",alignItems:"center",gap:5,padding:"5px 12px",background:"#fff",borderRadius:10,border:`2px solid ${t.color}`,boxShadow:i===myTeamIdx?`0 0 0 2px ${t.color}`:"none"}}>
@@ -775,9 +868,23 @@ function LandGrab(){
           </div>
         </div>
         <div style={{maxWidth:720,margin:"8px auto 0",textAlign:"center"}}>
+          <div style={{display:"flex",gap:6,justifyContent:"center",flexWrap:"wrap",marginBottom:6}}>
+            <button onClick={()=>setShowRank(true)} style={{...S.ghost,fontWeight:700,color:"#0f172a"}}>📊 중간 순위 보기</button>
+            {isHost&&<button onClick={endGameNow} style={{...S.ghost,fontWeight:700,color:"#dc2626",borderColor:"#fca5a5"}}>🏁 게임 종료</button>}
+          </div>
           <button onClick={leaveRoom} style={S.ghost}>← 나가기</button>
           <span style={{fontSize:11,color:"#94a3b8",marginLeft:8}}>빈 땅 탭 → 초성 맞추기 → 내 팀 땅!</span>
         </div>
+        {showRank&&(
+          <div style={S.overlay} onClick={()=>setShowRank(false)}>
+            <div style={{...S.modal,maxWidth:"min(420px,94vw)"}} onClick={e=>e.stopPropagation()}>
+              <h2 style={{margin:"0 0 2px",fontSize:20}}>📊 중간 합산 순위</h2>
+              <div style={{fontSize:12,color:"#94a3b8",marginBottom:14}}>지금까지 차지한 땅 누적 합계</div>
+              {rankPanel()}
+              <button onClick={()=>setShowRank(false)} style={{...S.btn,background:"#0f172a",color:"#fff",marginTop:6}}>닫기</button>
+            </div>
+          </div>
+        )}
         {sel&&(
           <div style={S.overlay} onClick={()=>{setSel(null);setSelProv(null);setMfb(null);}}>
             <div style={S.modal} onClick={e=>e.stopPropagation()}>
@@ -850,7 +957,6 @@ ReactDOM.createRoot(document.getElementById('root')).render(<LandGrab />);
     var er=document.getElementById('booterr'); if(er) er.style.display='block';
   }
 
-  // 각 라이브러리를 여러 CDN 중 성공하는 곳에서 로드
   function loadOne(urls, done){
     var i=0;
     (function next(){
@@ -863,7 +969,6 @@ ReactDOM.createRoot(document.getElementById('root')).render(<LandGrab />);
     })();
   }
 
-  // 순차 로드
   function chain(steps, done){
     var i=0;
     (function next(){
@@ -874,15 +979,12 @@ ReactDOM.createRoot(document.getElementById('root')).render(<LandGrab />);
 
   setMsg('게임 엔진을 불러오는 중...');
   chain([
-    // React (Cloudflare 우선, 실패 시 unpkg)
     ["https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js",
      "https://unpkg.com/react@18.2.0/umd/react.production.min.js"],
     ["https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js",
      "https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js"],
-    // Babel (실시간 변환기)
     ["https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.24.7/babel.min.js",
      "https://unpkg.com/@babel/standalone@7.24.7/babel.min.js"],
-    // Firebase (Google gstatic 우선, 한국에서 매우 안정적)
     ["https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js",
      "https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.0/firebase-app-compat.min.js"],
     ["https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js",
@@ -890,10 +992,8 @@ ReactDOM.createRoot(document.getElementById('root')).render(<LandGrab />);
   ], function(){
     try {
       setMsg('게임을 준비하는 중...');
-      // Firebase 초기화
       firebase.initializeApp(firebaseConfig);
       window.db = firebase.database();
-      // 앱 코드(JSX)를 변환 → 실행
       Babel.transformScriptTags();
     } catch (e) {
       console.error(e);
