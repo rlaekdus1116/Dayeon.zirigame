@@ -4,834 +4,2607 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>우리나라 땅따먹기 🗺️</title>
-  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
-  <style>* { box-sizing: border-box; } body { margin: 0; padding: 0; user-select: none; }</style>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 0; user-select: none; font-family:'Jua','Apple SD Gothic Neo','Malgun Gothic',sans-serif; }
+    #loading { min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; background:linear-gradient(160deg,#eff6ff,#fefce8); color:#475569; text-align:center; padding:24px; }
+    #loading .emoji { font-size:54px; animation: bob 1.2s ease-in-out infinite; }
+    #loading .msg { font-size:16px; }
+    #loading .sub { font-size:12px; color:#94a3b8; }
+    .spinner { width:34px; height:34px; border:4px solid #cbd5e1; border-top-color:#3b82f6; border-radius:50%; animation: spin 0.9s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes bob { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
+    .errbox { max-width:380px; background:#fff; border:3px solid #fecaca; border-radius:18px; padding:22px; box-shadow:0 12px 30px -10px rgba(0,0,0,.2); }
+    .errbox h3 { margin:0 0 8px; color:#dc2626; font-size:18px; }
+    .errbox p { font-size:13px; color:#475569; line-height:1.6; margin:6px 0; }
+    .errbox button { font-family:inherit; margin-top:12px; padding:10px 18px; border:none; border-radius:11px; background:#3b82f6; color:#fff; font-weight:700; font-size:14px; cursor:pointer; }
+  </style>
 </head>
 <body>
-<div id="root"></div>
+<div id="root">
+  <div id="loading">
+    <div class="emoji">🗺️</div>
+    <div class="spinner"></div>
+    <div class="msg">게임을 불러오는 중이에요…</div>
+    <div class="sub">잠시만 기다려 주세요</div>
+  </div>
+</div>
+
 <script>
-  const firebaseConfig = {
-    apiKey:"AIzaSyAWRO3rxV5xB296DwKKkNwzi7JUJjgrLXQ",
-    authDomain:"koreamapziri.firebaseapp.com",
-    databaseURL:"https://koreamapziri-default-rtdb.firebaseio.com",
-    projectId:"koreamapziri",
-    storageBucket:"koreamapziri.firebasestorage.app",
-    messagingSenderId:"64022812660",
-    appId:"1:64022812660:web:1f080022564259a3fd8ba1"
+(function(){
+  var FIREBASE_CONFIG = {
+    apiKey:            "AIzaSyAWRO3rxV5xB296DwKKkNwzi7JUJjgrLXQ",
+    authDomain:        "koreamapziri.firebaseapp.com",
+    databaseURL:       "https://koreamapziri-default-rtdb.firebaseio.com",
+    projectId:         "koreamapziri",
+    storageBucket:     "koreamapziri.firebasestorage.app",
+    messagingSenderId: "64022812660",
+    appId:             "1:64022812660:web:1f080022564259a3fd8ba1"
   };
-  firebase.initializeApp(firebaseConfig);
-  const db = firebase.database();
+
+  function showError(title, detail){
+    var root = document.getElementById('root');
+    if(!root) return;
+    root.innerHTML =
+      '<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(160deg,#eff6ff,#fefce8);padding:24px;">'+
+      '<div class="errbox">'+
+      '<h3>⚠️ '+title+'</h3>'+
+      '<p>'+detail+'</p>'+
+      '<p style="color:#94a3b8;font-size:12px;">학교/회사 와이파이라면 일부 사이트가 차단되어 있을 수 있어요. 휴대폰 데이터나 다른 네트워크로 다시 열어보세요.</p>'+
+      '<button onclick="location.reload(true)">🔄 다시 시도</button>'+
+      '</div></div>';
+  }
+  window.__ziriShowError = showError;
+
+  // 스크립트를 여러 CDN에서 순서대로 시도 (하나 막혀도 다음 걸로)
+  function loadScript(urls, cb){
+    var i = 0;
+    (function next(){
+      if(i >= urls.length){ showError('연결에 실패했어요', '게임에 필요한 파일을 불러오지 못했어요.'); return; }
+      var s = document.createElement('script');
+      s.src = urls[i++];
+      s.onload = function(){ cb(); };
+      s.onerror = function(){ next(); };
+      document.head.appendChild(s);
+    })();
+  }
+
+  var REACT = [
+    "https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js",
+    "https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.production.min.js",
+    "https://unpkg.com/react@18.2.0/umd/react.production.min.js"
+  ];
+  var REACTDOM = [
+    "https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js",
+    "https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.production.min.js",
+    "https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js"
+  ];
+  var FB_APP = [
+    "https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js",
+    "https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.0/firebase-app-compat.min.js",
+    "https://cdn.jsdelivr.net/npm/firebase@9.22.0/firebase-app-compat.js"
+  ];
+  var FB_DB = [
+    "https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js",
+    "https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.0/firebase-database-compat.min.js",
+    "https://cdn.jsdelivr.net/npm/firebase@9.22.0/firebase-database-compat.js"
+  ];
+
+  function runApp(){
+    try {
+      window.db = firebase.database();
+    } catch(e){
+      showError('데이터베이스 연결 실패', '온라인 팀 대결 기능을 켜지 못했어요. (' + (e && e.message ? e.message : e) + ')');
+      return;
+    }
+    try {
+      var code = document.getElementById('app-src').textContent;
+      var s = document.createElement('script');
+      s.textContent = code;
+      document.body.appendChild(s);
+    } catch(e){
+      showError('게임 실행 중 오류', (e && e.message ? e.message : String(e)));
+    }
+  }
+
+  window.addEventListener('error', function(ev){
+    if(document.getElementById('loading')){
+      showError('게임 실행 중 오류', (ev && ev.message ? ev.message : '알 수 없는 오류'));
+    }
+  });
+
+  loadScript(REACT, function(){
+    loadScript(REACTDOM, function(){
+      loadScript(FB_APP, function(){
+        try { firebase.initializeApp(FIREBASE_CONFIG); }
+        catch(e){ showError('데이터베이스 초기화 실패', (e && e.message ? e.message : String(e))); return; }
+        loadScript(FB_DB, function(){
+          runApp();
+        });
+      });
+    });
+  });
+})();
 </script>
-<script type="text/babel">
-const { useState, useEffect, useMemo, useRef } = React;
 
-const MAP_BG="./map.jpg", MAP_W=1000, MAP_H=1400;
-const EXAM_FAIL=15, TEAM_WRONG_LIMIT=20;
-const TEAM_COLORS=["#ef4444","#3b82f6","#22c55e","#f59e0b","#a855f7","#ec4899"];
-const TEAM_NAMES =["빨강팀","파랑팀","초록팀","노랑팀","보라팀","분홍팀"];
-const SOLO_CLR="#0891b2", EXAM_CLR="#7c3aed";
-
-const PROVINCES=[
-  {key:"gangwon",name:"강원도",regions:[{name:"철원",x:410,y:183},{name:"고성",x:564,y:144},{name:"속초",x:584,y:198},{name:"양양",x:599,y:238},{name:"강릉",x:639,y:308},{name:"동해",x:667,y:358},{name:"삼척",x:689,y:410},{name:"태백",x:656,y:445},{name:"인제",x:546,y:236},{name:"양구",x:502,y:186},{name:"화천",x:458,y:201},{name:"춘천",x:465,y:260},{name:"홍천",x:511,y:296},{name:"횡성",x:522,y:347},{name:"평창",x:571,y:332},{name:"정선",x:614,y:386},{name:"원주",x:486,y:403},{name:"영월",x:574,y:426}]},
-  {key:"chungcheong",name:"충청도",regions:[{name:"음성",x:438,y:486},{name:"충주",x:488,y:473},{name:"제천",x:529,y:445},{name:"단양",x:565,y:471},{name:"당진",x:305,y:502},{name:"천안",x:388,y:520},{name:"진천",x:418,y:508},{name:"태안",x:236,y:531},{name:"서산",x:271,y:531},{name:"아산",x:350,y:524},{name:"증평",x:447,y:530},{name:"괴산",x:483,y:530},{name:"홍성",x:295,y:584},{name:"예산",x:327,y:559},{name:"청주",x:429,y:564},{name:"청양",x:327,y:616},{name:"공주",x:364,y:587},{name:"보은",x:467,y:599},{name:"보령",x:292,y:635},{name:"부여",x:333,y:659},{name:"계룡",x:390,y:653},{name:"옥천",x:453,y:641},{name:"영동",x:481,y:679},{name:"서천",x:309,y:694},{name:"논산",x:380,y:676},{name:"금산",x:428,y:689},{name:"대전",x:416,y:632},{name:"세종",x:396,y:596}]},
-  {key:"gyeongbuk",name:"경상북도",regions:[{name:"봉화",x:643,y:495},{name:"영주",x:589,y:508},{name:"울진",x:709,y:491},{name:"울릉",x:938,y:340},{name:"문경",x:535,y:546},{name:"예천",x:574,y:555},{name:"영양",x:681,y:545},{name:"안동",x:633,y:575},{name:"상주",x:519,y:613},{name:"영덕",x:717,y:600},{name:"군위",x:609,y:682},{name:"의성",x:617,y:635},{name:"청송",x:674,y:628},{name:"구미",x:564,y:672},{name:"포항",x:730,y:703},{name:"김천",x:520,y:694},{name:"칠곡",x:579,y:714},{name:"영천",x:652,y:707},{name:"성주",x:546,y:736},{name:"경산",x:634,y:765},{name:"경주",x:700,y:755},{name:"고령",x:552,y:783},{name:"청도",x:624,y:801},{name:"대구",x:603,y:742}]},
-  {key:"gyeongnam",name:"경상남도",regions:[{name:"거창",x:494,y:774},{name:"합천",x:526,y:824},{name:"밀양",x:628,y:839},{name:"창녕",x:583,y:827},{name:"산청",x:494,y:865},{name:"함양",x:469,y:814},{name:"의령",x:554,y:859},{name:"양산",x:672,y:853},{name:"함안",x:571,y:894},{name:"김해",x:639,y:885},{name:"하동",x:474,y:921},{name:"진주",x:530,y:906},{name:"창원",x:601,y:913},{name:"사천",x:516,y:946},{name:"고성",x:556,y:950},{name:"통영",x:562,y:998},{name:"남해",x:504,y:1009},{name:"거제",x:607,y:986},{name:"울산",x:704,y:816},{name:"부산",x:684,y:903}]},
-  {key:"jeonbuk",name:"전라북도",regions:[{name:"군산",x:308,y:736},{name:"익산",x:352,y:711},{name:"완주",x:390,y:720},{name:"무주",x:462,y:730},{name:"김제",x:334,y:767},{name:"전주",x:374,y:763},{name:"진안",x:421,y:749},{name:"부안",x:301,y:792},{name:"정읍",x:336,y:811},{name:"임실",x:390,y:815},{name:"장수",x:438,y:799},{name:"순창",x:374,y:864},{name:"고창",x:295,y:853},{name:"남원",x:418,y:856}]},
-  {key:"jeonnam",name:"전라남도",regions:[{name:"영광",x:270,y:895},{name:"곡성",x:399,y:905},{name:"장성",x:317,y:887},{name:"담양",x:349,y:886},{name:"함평",x:277,y:930},{name:"구례",x:432,y:903},{name:"나주",x:311,y:959},{name:"화순",x:356,y:953},{name:"순천",x:414,y:958},{name:"무안",x:265,y:974},{name:"보성",x:379,y:1003},{name:"신안",x:210,y:998},{name:"목포",x:251,y:1004},{name:"영암",x:302,y:1004},{name:"장흥",x:340,y:1014},{name:"고흥",x:401,y:1055},{name:"광양",x:459,y:958},{name:"해남",x:287,y:1063},{name:"강진",x:319,y:1044},{name:"여수",x:457,y:1013},{name:"진도",x:234,y:1090},{name:"완도",x:322,y:1121},{name:"광주",x:327,y:920}]},
-  {key:"jeju",name:"제주도",regions:[{name:"제주",x:271,y:1324},{name:"서귀포",x:299,y:1360}]}
-];
-const TOTAL_REGIONS=PROVINCES.reduce((a,p)=>a+p.regions.length,0);
-
-const CHO=["ㄱ","ㄲ","ㄴ","ㄷ","ㄸ","ㄹ","ㅁ","ㅂ","ㅃ","ㅅ","ㅆ","ㅇ","ㅈ","ㅉ","ㅊ","ㅋ","ㅌ","ㅍ","ㅎ"];
-function choseong(s){return[...s].map(ch=>{const c=ch.charCodeAt(0)-0xac00;return(c<0||c>11171)?ch:CHO[Math.floor(c/588)];}).join(" ");}
-function normalize(s){return s.trim().replace(/\s/g,"").replace(/(특별자치도|광역시|특별시|자치시|시|군|구)$/,"");}
-const fbk=(p,n)=>`${p}__${n}`;
-function fmtTime(ms){const s=Math.round(ms/1000);return`${Math.floor(s/60)}분 ${s%60}초`;}
-function genCode(){return String(Math.floor(1000+Math.random()*9000));}
-function getMyPid(){
-  let id=sessionStorage.getItem('ziri_pid');
-  if(!id){id='p'+Date.now().toString(36)+Math.random().toString(36).slice(2,5);sessionStorage.setItem('ziri_pid',id);}
+<script id="app-src" type="text/plain">
+const {
+  useState,
+  useEffect,
+  useMemo,
+  useRef
+} = React;
+const MAP_BG = "./map.jpg";
+const MAP_W = 1000,
+  MAP_H = 1400;
+const EXAM_FAIL_LIMIT = 15;
+const PROVINCES = [{
+  "key": "gangwon",
+  "name": "강원도",
+  "regions": [{
+    "name": "철원",
+    "x": 410,
+    "y": 183
+  }, {
+    "name": "고성",
+    "x": 564,
+    "y": 144
+  }, {
+    "name": "속초",
+    "x": 584,
+    "y": 198
+  }, {
+    "name": "양양",
+    "x": 599,
+    "y": 238
+  }, {
+    "name": "강릉",
+    "x": 639,
+    "y": 308
+  }, {
+    "name": "동해",
+    "x": 667,
+    "y": 358
+  }, {
+    "name": "삼척",
+    "x": 689,
+    "y": 410
+  }, {
+    "name": "태백",
+    "x": 656,
+    "y": 445
+  }, {
+    "name": "인제",
+    "x": 546,
+    "y": 236
+  }, {
+    "name": "양구",
+    "x": 502,
+    "y": 186
+  }, {
+    "name": "화천",
+    "x": 458,
+    "y": 201
+  }, {
+    "name": "춘천",
+    "x": 465,
+    "y": 260
+  }, {
+    "name": "홍천",
+    "x": 511,
+    "y": 296
+  }, {
+    "name": "횡성",
+    "x": 522,
+    "y": 347
+  }, {
+    "name": "평창",
+    "x": 571,
+    "y": 332
+  }, {
+    "name": "정선",
+    "x": 614,
+    "y": 386
+  }, {
+    "name": "원주",
+    "x": 486,
+    "y": 403
+  }, {
+    "name": "영월",
+    "x": 574,
+    "y": 426
+  }]
+}, {
+  "key": "chungcheong",
+  "name": "충청도",
+  "regions": [{
+    "name": "음성",
+    "x": 438,
+    "y": 486
+  }, {
+    "name": "충주",
+    "x": 488,
+    "y": 473
+  }, {
+    "name": "제천",
+    "x": 529,
+    "y": 445
+  }, {
+    "name": "단양",
+    "x": 565,
+    "y": 471
+  }, {
+    "name": "당진",
+    "x": 305,
+    "y": 502
+  }, {
+    "name": "천안",
+    "x": 388,
+    "y": 520
+  }, {
+    "name": "진천",
+    "x": 418,
+    "y": 508
+  }, {
+    "name": "태안",
+    "x": 236,
+    "y": 531
+  }, {
+    "name": "서산",
+    "x": 271,
+    "y": 531
+  }, {
+    "name": "아산",
+    "x": 350,
+    "y": 524
+  }, {
+    "name": "증평",
+    "x": 447,
+    "y": 530
+  }, {
+    "name": "괴산",
+    "x": 483,
+    "y": 530
+  }, {
+    "name": "홍성",
+    "x": 295,
+    "y": 584
+  }, {
+    "name": "예산",
+    "x": 327,
+    "y": 559
+  }, {
+    "name": "청주",
+    "x": 429,
+    "y": 564
+  }, {
+    "name": "청양",
+    "x": 327,
+    "y": 616
+  }, {
+    "name": "공주",
+    "x": 364,
+    "y": 587
+  }, {
+    "name": "보은",
+    "x": 467,
+    "y": 599
+  }, {
+    "name": "보령",
+    "x": 292,
+    "y": 635
+  }, {
+    "name": "부여",
+    "x": 333,
+    "y": 659
+  }, {
+    "name": "계룡",
+    "x": 390,
+    "y": 653
+  }, {
+    "name": "옥천",
+    "x": 453,
+    "y": 641
+  }, {
+    "name": "영동",
+    "x": 481,
+    "y": 679
+  }, {
+    "name": "서천",
+    "x": 309,
+    "y": 694
+  }, {
+    "name": "논산",
+    "x": 380,
+    "y": 676
+  }, {
+    "name": "금산",
+    "x": 428,
+    "y": 689
+  }, {
+    "name": "대전",
+    "x": 416,
+    "y": 632
+  }, {
+    "name": "세종",
+    "x": 396,
+    "y": 596
+  }]
+}, {
+  "key": "gyeongbuk",
+  "name": "경상북도",
+  "regions": [{
+    "name": "봉화",
+    "x": 643,
+    "y": 495
+  }, {
+    "name": "영주",
+    "x": 589,
+    "y": 508
+  }, {
+    "name": "울진",
+    "x": 709,
+    "y": 491
+  }, {
+    "name": "울릉",
+    "x": 938,
+    "y": 340
+  }, {
+    "name": "문경",
+    "x": 535,
+    "y": 546
+  }, {
+    "name": "예천",
+    "x": 574,
+    "y": 555
+  }, {
+    "name": "영양",
+    "x": 681,
+    "y": 545
+  }, {
+    "name": "안동",
+    "x": 633,
+    "y": 575
+  }, {
+    "name": "상주",
+    "x": 519,
+    "y": 613
+  }, {
+    "name": "영덕",
+    "x": 717,
+    "y": 600
+  }, {
+    "name": "군위",
+    "x": 609,
+    "y": 682
+  }, {
+    "name": "의성",
+    "x": 617,
+    "y": 635
+  }, {
+    "name": "청송",
+    "x": 674,
+    "y": 628
+  }, {
+    "name": "구미",
+    "x": 564,
+    "y": 672
+  }, {
+    "name": "포항",
+    "x": 730,
+    "y": 703
+  }, {
+    "name": "김천",
+    "x": 520,
+    "y": 694
+  }, {
+    "name": "칠곡",
+    "x": 579,
+    "y": 714
+  }, {
+    "name": "영천",
+    "x": 652,
+    "y": 707
+  }, {
+    "name": "성주",
+    "x": 546,
+    "y": 736
+  }, {
+    "name": "경산",
+    "x": 634,
+    "y": 765
+  }, {
+    "name": "경주",
+    "x": 700,
+    "y": 755
+  }, {
+    "name": "고령",
+    "x": 552,
+    "y": 783
+  }, {
+    "name": "청도",
+    "x": 624,
+    "y": 801
+  }, {
+    "name": "대구",
+    "x": 603,
+    "y": 742
+  }]
+}, {
+  "key": "gyeongnam",
+  "name": "경상남도",
+  "regions": [{
+    "name": "거창",
+    "x": 494,
+    "y": 774
+  }, {
+    "name": "합천",
+    "x": 526,
+    "y": 824
+  }, {
+    "name": "밀양",
+    "x": 628,
+    "y": 839
+  }, {
+    "name": "창녕",
+    "x": 583,
+    "y": 827
+  }, {
+    "name": "산청",
+    "x": 494,
+    "y": 865
+  }, {
+    "name": "함양",
+    "x": 469,
+    "y": 814
+  }, {
+    "name": "의령",
+    "x": 554,
+    "y": 859
+  }, {
+    "name": "양산",
+    "x": 672,
+    "y": 853
+  }, {
+    "name": "함안",
+    "x": 571,
+    "y": 894
+  }, {
+    "name": "김해",
+    "x": 639,
+    "y": 885
+  }, {
+    "name": "하동",
+    "x": 474,
+    "y": 921
+  }, {
+    "name": "진주",
+    "x": 530,
+    "y": 906
+  }, {
+    "name": "창원",
+    "x": 601,
+    "y": 913
+  }, {
+    "name": "사천",
+    "x": 516,
+    "y": 946
+  }, {
+    "name": "고성",
+    "x": 556,
+    "y": 950
+  }, {
+    "name": "통영",
+    "x": 562,
+    "y": 998
+  }, {
+    "name": "남해",
+    "x": 504,
+    "y": 1009
+  }, {
+    "name": "거제",
+    "x": 607,
+    "y": 986
+  }, {
+    "name": "울산",
+    "x": 704,
+    "y": 816
+  }, {
+    "name": "부산",
+    "x": 684,
+    "y": 903
+  }]
+}, {
+  "key": "jeonbuk",
+  "name": "전라북도",
+  "regions": [{
+    "name": "군산",
+    "x": 308,
+    "y": 736
+  }, {
+    "name": "익산",
+    "x": 352,
+    "y": 711
+  }, {
+    "name": "완주",
+    "x": 390,
+    "y": 720
+  }, {
+    "name": "무주",
+    "x": 462,
+    "y": 730
+  }, {
+    "name": "김제",
+    "x": 334,
+    "y": 767
+  }, {
+    "name": "전주",
+    "x": 374,
+    "y": 763
+  }, {
+    "name": "진안",
+    "x": 421,
+    "y": 749
+  }, {
+    "name": "부안",
+    "x": 301,
+    "y": 792
+  }, {
+    "name": "정읍",
+    "x": 336,
+    "y": 811
+  }, {
+    "name": "임실",
+    "x": 390,
+    "y": 815
+  }, {
+    "name": "장수",
+    "x": 438,
+    "y": 799
+  }, {
+    "name": "순창",
+    "x": 374,
+    "y": 864
+  }, {
+    "name": "고창",
+    "x": 295,
+    "y": 853
+  }, {
+    "name": "남원",
+    "x": 418,
+    "y": 856
+  }]
+}, {
+  "key": "jeonnam",
+  "name": "전라남도",
+  "regions": [{
+    "name": "영광",
+    "x": 270,
+    "y": 895
+  }, {
+    "name": "곡성",
+    "x": 399,
+    "y": 905
+  }, {
+    "name": "장성",
+    "x": 317,
+    "y": 887
+  }, {
+    "name": "담양",
+    "x": 349,
+    "y": 886
+  }, {
+    "name": "함평",
+    "x": 277,
+    "y": 930
+  }, {
+    "name": "구례",
+    "x": 432,
+    "y": 903
+  }, {
+    "name": "나주",
+    "x": 311,
+    "y": 959
+  }, {
+    "name": "화순",
+    "x": 356,
+    "y": 953
+  }, {
+    "name": "순천",
+    "x": 414,
+    "y": 958
+  }, {
+    "name": "무안",
+    "x": 265,
+    "y": 974
+  }, {
+    "name": "보성",
+    "x": 379,
+    "y": 1003
+  }, {
+    "name": "신안",
+    "x": 210,
+    "y": 998
+  }, {
+    "name": "목포",
+    "x": 251,
+    "y": 1004
+  }, {
+    "name": "영암",
+    "x": 302,
+    "y": 1004
+  }, {
+    "name": "장흥",
+    "x": 340,
+    "y": 1014
+  }, {
+    "name": "고흥",
+    "x": 401,
+    "y": 1055
+  }, {
+    "name": "광양",
+    "x": 459,
+    "y": 958
+  }, {
+    "name": "해남",
+    "x": 287,
+    "y": 1063
+  }, {
+    "name": "강진",
+    "x": 319,
+    "y": 1044
+  }, {
+    "name": "여수",
+    "x": 457,
+    "y": 1013
+  }, {
+    "name": "진도",
+    "x": 234,
+    "y": 1090
+  }, {
+    "name": "완도",
+    "x": 322,
+    "y": 1121
+  }, {
+    "name": "광주",
+    "x": 327,
+    "y": 920
+  }]
+}, {
+  "key": "jeju",
+  "name": "제주도",
+  "regions": [{
+    "name": "제주",
+    "x": 271,
+    "y": 1324
+  }, {
+    "name": "서귀포",
+    "x": 299,
+    "y": 1360
+  }]
+}];
+const TEAM_COLORS = ["#ef4444", "#3b82f6", "#22c55e", "#f59e0b", "#a855f7", "#ec4899"];
+const TEAM_NAMES = ["빨강팀", "파랑팀", "초록팀", "노랑팀", "보라팀", "분홍팀"];
+const SOLO_COLOR = "#3b82f6";
+const EXAM_COLOR = "#7c3aed";
+const CHO = ["ㄱ", "ㄲ", "ㄴ", "ㄷ", "ㄸ", "ㄹ", "ㅁ", "ㅂ", "ㅃ", "ㅅ", "ㅆ", "ㅇ", "ㅈ", "ㅉ", "ㅊ", "ㅋ", "ㅌ", "ㅍ", "ㅎ"];
+function choseong(s) {
+  return [...s].map(ch => {
+    const c = ch.charCodeAt(0) - 0xac00;
+    return c < 0 || c > 11171 ? ch : CHO[Math.floor(c / 588)];
+  }).join(" ");
+}
+function normalize(s) {
+  return s.replace(/\s/g, "").replace(/(특별자치도|광역시|특별시|자치시|시|군|구)$/, "");
+}
+const fbk = (prov, name) => `${prov}__${name}`;
+function fmtTime(ms) {
+  const s = Math.round(ms / 1000);
+  return `${Math.floor(s / 60)}분 ${s % 60}초`;
+}
+const TOTAL_REGIONS = PROVINCES.reduce((a, p) => a + p.regions.length, 0);
+function getMyPid() {
+  let id = sessionStorage.getItem('ziri_pid');
+  if (!id) {
+    id = 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+    sessionStorage.setItem('ziri_pid', id);
+  }
   return id;
 }
-
-function LandGrab(){
-  const myPid=useMemo(()=>getMyPid(),[]);
-
-  /* 공통 */
-  const [phase,    setPhase]   = useState("home");
-  const [error,    setError]   = useState("");
-  const [bgmOn,    setBgmOn]   = useState(true);
-  const [sel,      setSel]     = useState(null);
-  const [selProv,  setSelProv] = useState(null);
-  const [inputAns, setInput]   = useState("");
-  const [mfb,      setMfb]     = useState(null);
-  const [flash,    setFlash]   = useState(null);
-  const inputRef=useRef(null);
-  const actxRef =useRef(null);
-  const bgmRef  =useRef(null);
-  const bgmOnRef=useRef(true);
-  const bgmStepRef=useRef(0);
-  const bgmNextRef=useRef(0);
-  useEffect(()=>{bgmOnRef.current=bgmOn;},[bgmOn]);
-
-  /* 팀전 */
-  const [roomCode,  setRoomCode]  = useState("");
+function genCode() {
+  return Math.random().toString(36).slice(2, 8).toUpperCase();
+}
+function LandGrab() {
+  const myPid = useMemo(() => getMyPid(), []);
+  const [phase, setPhase] = useState("home");
+  const [error, setError] = useState("");
+  const [bgmOn, setBgmOn] = useState(true);
+  const [sel, setSel] = useState(null);
+  const [selProv, setSelProv] = useState(null);
+  const [inputAns, setInputAns] = useState("");
+  const [mfb, setMfb] = useState(null);
+  const [flash, setFlash] = useState(null);
+  const inputRef = useRef(null);
+  const actxRef = useRef(null);
+  const bgmRef = useRef(null);
+  const bgmOnRef = useRef(true);
+  useEffect(() => {
+    bgmOnRef.current = bgmOn;
+  }, [bgmOn]);
+  const [roomCode, setRoomCode] = useState("");
   const [inputCode, setInputCode] = useState("");
-  const [myName,    setMyName]    = useState(sessionStorage.getItem('ziri_name')||"");
+  const [myName, setMyName] = useState(sessionStorage.getItem('ziri_name') || "");
   const [myTeamIdx, setMyTeamIdx] = useState(null);
-  const [isHost,    setIsHost]    = useState(false);
+  const [isHost, setIsHost] = useState(false);
   const [teamCount, setTeamCount] = useState(2);
   const [teamNames, setTeamNames] = useState([...TEAM_NAMES]);
-  const [roomData,  setRoomData]  = useState(null);
-
-  /* 1인용 */
-  const [soloType,   setSoloType]   = useState("practice");
-  const [soloMap,    setSoloMap]    = useState("nation");
+  const [roomData, setRoomData] = useState(null);
+  const [soloType, setSoloType] = useState("practice");
+  const [soloMap, setSoloMap] = useState("nation");
   const [soloOwners, setSoloOwners] = useState({});
-  const [soloWrong,  setSoloWrong]  = useState(0);
-  const [soloStart,  setSoloStart]  = useState(null);
-  const [soloEnd,    setSoloEnd]    = useState(null);
+  const [soloWrong, setSoloWrong] = useState(0);
+  const [soloStart, setSoloStart] = useState(null);
+  const [soloEnd, setSoloEnd] = useState(null);
   const [soloFailed, setSoloFailed] = useState(false);
-  const [soloNow,    setSoloNow]    = useState(null);
-  const timerRef=useRef(null);
-
-  /* Firebase */
-  useEffect(()=>{
-    if(!roomCode)return;
-    const ref=db.ref(`rooms/${roomCode}`);
-    ref.on('value',snap=>setRoomData(snap.val()));
-    return()=>ref.off();
-  },[roomCode]);
-
-  const game   =roomData?.game   ||{};
-  const players=roomData?.players||{};
-  const owners =roomData?.owners ||{};
-  const teams  =game.teams||TEAM_NAMES.slice(0,2).map((n,i)=>({name:n,color:TEAM_COLORS[i]}));
-  const scores =useMemo(()=>{
-    const s=Array(teams.length).fill(0);
-    Object.values(owners).forEach(ti=>{if(typeof ti==="number"&&ti>=0&&ti<s.length)s[ti]++;});
-    return s;
-  },[owners,teams]);
-
-  /* 팀전 파생 */
-  const prov=useMemo(()=>{
-    if(!game.started||game.mode==="nation")return null;
-    const order=game.order||[];
-    if(!order.length)return null;
-    return PROVINCES[order[game.provIdx||0]]||null;
-  },[game.started,game.mode,game.order,game.provIdx]);
-  const provOwned =prov?prov.regions.filter(r=>owners[fbk(prov.key,r.name)]!==undefined).length:0;
-  const provTotal =prov?prov.regions.length:0;
-  const totalOwned=Object.keys(owners).length;
-
-  /* 상태 전환 */
-  useEffect(()=>{
-    if(!roomData)return;
-    const g=roomData.game||{};
-    if(phase==="waiting"&&g.started)                       {setPhase("game");startBgm();}
-    if(phase==="game"   &&g.cleared)                       {setPhase("result");stopBgm();fanfare();}
-    if(phase==="result" &&g.started&&!g.cleared)           {setPhase("game");startBgm();setSel(null);setMfb(null);}
-    if((phase==="game"||phase==="result")&&!g.started)     {setPhase("waiting");setSel(null);stopBgm();}
-  },[roomData]);
-
-  /* viewBox */
-  const zoomProv=useMemo(()=>{
-    if(phase==="solo_game") return soloMap==="nation"?null:PROVINCES.find(p=>p.key===soloMap)||null;
-    if(!game.mode||game.mode==="nation") return null;
-    if(game.mode==="all") return prov||null;
-    return PROVINCES.find(p=>p.key===game.mode)||null;
-  },[phase,soloMap,game.mode,prov]);
-
-  const viewBox=useMemo(()=>{
-    if(!zoomProv)return`0 0 ${MAP_W} ${MAP_H}`;
-    const xs=zoomProv.regions.map(r=>r.x),ys=zoomProv.regions.map(r=>r.y);
-    let x0=Math.min(...xs),x1=Math.max(...xs),y0=Math.min(...ys),y1=Math.max(...ys);
-    const px=(x1-x0)*0.18+50,py=(y1-y0)*0.18+50;
-    x0-=px;x1+=px;y0-=py;y1+=py;
-    let w=x1-x0,h=y1-y0;
-    if(w>h){const d=(w-h)/2;y0-=d;h=w;}else{const d=(h-w)/2;x0-=d;w=h;}
-    return`${x0} ${y0} ${w} ${h}`;
-  },[zoomProv]);
-
-  const isNation=!zoomProv&&(phase==="solo_game"?soloMap==="nation":game.mode==="nation"||!game.mode);
-  const vbW=parseFloat(viewBox.split(" ")[2]);
-  const sz =isNation?9:Math.max(13,Math.min(24,Math.round(40*(vbW/MAP_W))));
-  const pillW=sz*1.9,pillH=sz*1.3;
-
-  /* ── 사운드 ── */
-  function getAC(){
-    if(!actxRef.current)actxRef.current=new(window.AudioContext||window.webkitAudioContext)();
-    const ac=actxRef.current;if(ac.state==="suspended")ac.resume();return ac;
-  }
-  function sound(ok){try{
-    const ac=getAC(),t=ac.currentTime;
-    if(ok){[523,659,784].forEach((f,i)=>{const o=ac.createOscillator(),g=ac.createGain();o.type="triangle";o.frequency.value=f;o.connect(g);g.connect(ac.destination);const s=t+i*0.085;g.gain.setValueAtTime(0.0001,s);g.gain.exponentialRampToValueAtTime(0.5,s+0.02);g.gain.exponentialRampToValueAtTime(0.0001,s+0.26);o.start(s);o.stop(s+0.28);});}
-    else{const o=ac.createOscillator(),g=ac.createGain();o.type="sawtooth";o.frequency.value=140;o.connect(g);g.connect(ac.destination);g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(0.3,t+0.02);g.gain.exponentialRampToValueAtTime(0.0001,t+0.28);o.start(t);o.stop(t+0.3);}
-  }catch(e){}}
-
-  function fanfare(){try{
-    const ac=getAC();
-    [[523,.12],[659,.12],[784,.12],[1047,.18],[880,.12],[988,.12],[1047,.25]].forEach(([f,dur],i)=>{
-      let t=ac.currentTime;
-      const off=[0,.13,.26,.39,.6,.73,.86];
-      const o=ac.createOscillator(),g=ac.createGain();
-      o.type="square";o.frequency.value=f;o.connect(g);g.connect(ac.destination);
-      const s=t+off[i];
-      g.gain.setValueAtTime(0.0001,s);g.gain.exponentialRampToValueAtTime(0.25,s+0.02);g.gain.exponentialRampToValueAtTime(0.0001,s+dur);
-      o.start(s);o.stop(s+dur+0.02);
+  const [soloNow, setSoloNow] = useState(null);
+  const timerRef = useRef(null);
+  useEffect(() => {
+    if (!roomCode) return;
+    const ref = db.ref(`rooms/${roomCode}`);
+    ref.on('value', snap => setRoomData(snap.val()));
+    return () => ref.off();
+  }, [roomCode]);
+  const game = roomData?.game || {};
+  const players = roomData?.players || {};
+  const owners = roomData?.owners || {};
+  const teams = game.teams || TEAM_NAMES.slice(0, 2).map((n, i) => ({
+    name: n,
+    color: TEAM_COLORS[i]
+  }));
+  const scores = useMemo(() => {
+    const s = Array(teams.length).fill(0);
+    Object.values(owners).forEach(ti => {
+      if (ti >= 0 && ti < s.length) s[ti]++;
     });
-  }catch(e){}}
-
-  const MELODY=[523,659,784,659,587,784,988,784,659,784,1047,784,587,659,784,880];
-  const BASS  =[131,0,196,0,165,0,196,0,131,0,196,0,165,0,98,0];
-  const STEP_DUR=0.175;
-  function scheduleBgm(){
-    const ac=actxRef.current;if(!ac)return;
-    const ahead=0.5;
-    while(bgmNextRef.current<ac.currentTime+ahead){
-      if(bgmOnRef.current){
-        const i=bgmStepRef.current%MELODY.length;
-        const m=MELODY[i],b=BASS[i],t=bgmNextRef.current;
-        if(m){const o=ac.createOscillator(),g=ac.createGain();o.type="square";o.frequency.value=m;o.connect(g);g.connect(ac.destination);g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(0.05,t+0.01);g.gain.exponentialRampToValueAtTime(0.0001,t+0.14);o.start(t);o.stop(t+0.16);}
-        if(b){const o=ac.createOscillator(),g=ac.createGain();o.type="triangle";o.frequency.value=b;o.connect(g);g.connect(ac.destination);g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(0.07,t+0.01);g.gain.exponentialRampToValueAtTime(0.0001,t+0.2);o.start(t);o.stop(t+0.22);}
+    return s;
+  }, [owners, teams]);
+  useEffect(() => {
+    if (!roomData) return;
+    const g = roomData.game || {};
+    if (phase === "waiting" && g.started) {
+      setPhase("game");
+      startBgm();
+    }
+    if (phase === "game" && g.cleared) {
+      setPhase("result");
+      stopBgm();
+    }
+    if (phase === "result" && g.started && !g.cleared) {
+      setPhase("game");
+    }
+    if ((phase === "game" || phase === "result") && !g.started) {
+      setPhase("waiting");
+      setSel(null);
+      stopBgm();
+    }
+  }, [roomData]);
+  const prov = game.started && game.mode !== "nation" && game.order?.length > 0 ? PROVINCES[game.order[game.provIdx || 0]] : null;
+  const provOwned = prov ? prov.regions.filter(r => owners[fbk(prov.key, r.name)] !== undefined).length : 0;
+  const provTotal = prov ? prov.regions.length : 0;
+  const totalOwned = Object.keys(owners).length;
+  const activeProvKey = phase === "solo_game" ? soloMap : game.mode && game.mode !== "nation" ? game.mode : null;
+  const activeProv = activeProvKey && activeProvKey !== "nation" ? PROVINCES.find(p => p.key === activeProvKey) : null;
+  const viewBox = useMemo(() => {
+    if (!activeProv) return `0 0 ${MAP_W} ${MAP_H}`;
+    const xs = activeProv.regions.map(r => r.x),
+      ys = activeProv.regions.map(r => r.y);
+    let minX = Math.min(...xs),
+      maxX = Math.max(...xs),
+      minY = Math.min(...ys),
+      maxY = Math.max(...ys);
+    const padX = (maxX - minX) * 0.16 + 46,
+      padY = (maxY - minY) * 0.16 + 46;
+    minX -= padX;
+    maxX += padX;
+    minY -= padY;
+    maxY += padY;
+    let w = maxX - minX,
+      h = maxY - minY;
+    if (w > h) {
+      const d = (w - h) / 2;
+      minY -= d;
+      h = w;
+    } else {
+      const d = (h - w) / 2;
+      minX -= d;
+      w = h;
+    }
+    return `${minX} ${minY} ${w} ${h}`;
+  }, [activeProv]);
+  const vbScale = useMemo(() => parseFloat(viewBox.split(" ")[2]) / MAP_W, [viewBox]);
+  const isNationMode = phase === "solo_game" ? soloMap === "nation" : game.mode === "nation";
+  const sz = isNationMode ? 9 : Math.max(13, Math.min(24, Math.round(40 * vbScale)));
+  const pillW = sz * 1.9,
+    pillH = sz * 1.3;
+  function sound(ok) {
+    try {
+      if (!actxRef.current) actxRef.current = new (window.AudioContext || window.webkitAudioContext)();
+      const ac = actxRef.current;
+      if (ac.state === "suspended") ac.resume();
+      if (ok) {
+        [523, 659, 784].forEach((f, i) => {
+          const o = ac.createOscillator(),
+            g = ac.createGain();
+          o.type = "triangle";
+          o.frequency.value = f;
+          o.connect(g);
+          g.connect(ac.destination);
+          const st = ac.currentTime + i * 0.085;
+          g.gain.setValueAtTime(0.0001, st);
+          g.gain.exponentialRampToValueAtTime(0.5, st + 0.02);
+          g.gain.exponentialRampToValueAtTime(0.0001, st + 0.26);
+          o.start(st);
+          o.stop(st + 0.28);
+        });
+      } else {
+        const o = ac.createOscillator(),
+          g = ac.createGain();
+        o.type = "sawtooth";
+        o.frequency.value = 140;
+        o.connect(g);
+        g.connect(ac.destination);
+        const st = ac.currentTime;
+        g.gain.setValueAtTime(0.0001, st);
+        g.gain.exponentialRampToValueAtTime(0.3, st + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, st + 0.28);
+        o.start(st);
+        o.stop(st + 0.3);
       }
-      bgmNextRef.current+=STEP_DUR;
-      bgmStepRef.current++;
+    } catch (e) {}
+  }
+  const MELODY = [523, 659, 784, 659, 587, 784, 988, 784, 659, 784, 1047, 784, 587, 659, 784, 880];
+  const BASS = [131, 0, 196, 0, 165, 0, 196, 0, 131, 0, 196, 0, 165, 0, 98, 0];
+  function startBgm() {
+    try {
+      if (!actxRef.current) actxRef.current = new (window.AudioContext || window.webkitAudioContext)();
+      const ac = actxRef.current;
+      if (ac.state === "suspended") ac.resume();
+      if (bgmRef.current) return;
+      let step = 0;
+      bgmRef.current = setInterval(() => {
+        if (!bgmOnRef.current) return;
+        const m = MELODY[step % MELODY.length],
+          b = BASS[step % BASS.length],
+          t = ac.currentTime;
+        if (m) {
+          const o = ac.createOscillator(),
+            g = ac.createGain();
+          o.type = "square";
+          o.frequency.value = m;
+          o.connect(g);
+          g.connect(ac.destination);
+          g.gain.setValueAtTime(0.0001, t);
+          g.gain.exponentialRampToValueAtTime(0.05, t + 0.01);
+          g.gain.exponentialRampToValueAtTime(0.0001, t + 0.14);
+          o.start(t);
+          o.stop(t + 0.16);
+        }
+        if (b) {
+          const o = ac.createOscillator(),
+            g = ac.createGain();
+          o.type = "triangle";
+          o.frequency.value = b;
+          o.connect(g);
+          g.connect(ac.destination);
+          g.gain.setValueAtTime(0.0001, t);
+          g.gain.exponentialRampToValueAtTime(0.07, t + 0.01);
+          g.gain.exponentialRampToValueAtTime(0.0001, t + 0.2);
+          o.start(t);
+          o.stop(t + 0.22);
+        }
+        step++;
+      }, 175);
+    } catch (e) {}
+  }
+  function stopBgm() {
+    if (bgmRef.current) {
+      clearInterval(bgmRef.current);
+      bgmRef.current = null;
     }
   }
-  function startBgm(){try{
-    const ac=getAC();if(bgmRef.current)return;
-    bgmStepRef.current=0;bgmNextRef.current=ac.currentTime+0.1;
-    scheduleBgm();bgmRef.current=setInterval(scheduleBgm,100);
-  }catch(e){}}
-  function stopBgm(){if(bgmRef.current){clearInterval(bgmRef.current);bgmRef.current=null;}}
-
-  /* ── 1인용 ── */
-  function soloStartGame(){
-    setSoloOwners({});setSoloWrong(0);setSoloFailed(false);
-    const now=Date.now();setSoloStart(now);setSoloEnd(null);setSoloNow(now);
-    setSel(null);setSelProv(null);setInput("");setMfb(null);
-    setPhase("solo_game");startBgm();
-    timerRef.current=setInterval(()=>setSoloNow(Date.now()),1000);
+  function soloStartGame() {
+    setSoloOwners({});
+    setSoloWrong(0);
+    setSoloFailed(false);
+    const now = Date.now();
+    setSoloStart(now);
+    setSoloEnd(null);
+    setSoloNow(now);
+    setSel(null);
+    setSelProv(null);
+    setInputAns("");
+    setMfb(null);
+    setPhase("solo_game");
+    startBgm();
+    timerRef.current = setInterval(() => setSoloNow(Date.now()), 1000);
   }
-  function soloFinish(failed=false){
-    setSoloEnd(Date.now());setSoloFailed(failed);
+  function soloFinish(failed = false) {
+    const end = Date.now();
+    setSoloEnd(end);
+    setSoloFailed(failed);
     clearInterval(timerRef.current);
-    setSel(null);setSelProv(null);setMfb(null);
-    setPhase("solo_result");stopBgm();
-    if(!failed)fanfare();
+    setSel(null);
+    setSelProv(null);
+    setMfb(null);
+    setPhase("solo_result");
+    stopBgm();
   }
-  function soloBack(){
-    clearInterval(timerRef.current);stopBgm();
-    setSel(null);setSelProv(null);setMfb(null);setPhase("solo_setup");
+  function soloBack() {
+    clearInterval(timerRef.current);
+    stopBgm();
+    setSel(null);
+    setSelProv(null);
+    setMfb(null);
+    setPhase("solo_setup");
   }
-  function soloPickRegion(pk,name){
-    if(soloOwners[fbk(pk,name)])return;
-    setSel(name);setSelProv(pk);setInput("");setMfb(null);
+  function soloPickRegion(provKey, name) {
+    if (soloOwners[fbk(provKey, name)]) return;
+    setSel(name);
+    setSelProv(provKey);
+    setInputAns("");
+    setMfb(null);
   }
-  function soloSubmit(){
-    if(!sel)return;
-    if(normalize(inputAns)===normalize(sel)){
+  function soloSubmit() {
+    if (!sel) return;
+    if (normalize(inputAns) === normalize(sel)) {
       sound(true);
-      const key=fbk(selProv,sel);
-      const newOwners={...soloOwners,[key]:true};
+      const key = fbk(selProv, sel);
+      const newOwners = {
+        ...soloOwners,
+        [key]: true
+      };
       setSoloOwners(newOwners);
-      setFlash({name:sel,provKey:selProv});setTimeout(()=>setFlash(null),700);
-      const owned=Object.keys(newOwners).length;
-      let done=false;
-      if(soloMap==="nation"&&owned>=TOTAL_REGIONS)done=true;
-      else if(soloMap!=="nation"){const pd=PROVINCES.find(p=>p.key===soloMap);if(owned>=pd.regions.length)done=true;}
-      setSel(null);setSelProv(null);setInput("");setMfb(null);
-      if(done)soloFinish(false);
+      setFlash({
+        name: sel,
+        provKey: selProv
+      });
+      setTimeout(() => setFlash(null), 700);
+      const owned = Object.keys(newOwners).length;
+      let done = false;
+      if (soloMap === "nation" && owned >= TOTAL_REGIONS) done = true;else if (soloMap !== "nation") {
+        const provData = PROVINCES.find(p => p.key === soloMap);
+        if (owned >= provData.regions.length) done = true;
+      }
+      setSel(null);
+      setSelProv(null);
+      setInputAns("");
+      setMfb(null);
+      if (done) soloFinish(false);
     } else {
       sound(false);
-      const newW=soloWrong+1;setSoloWrong(newW);
-      if(soloType==="exam"){
-        const mine=Object.keys(soloOwners);
-        let lostName=null,lostPK=null;
-        if(mine.length){
-          const lk=mine[Math.floor(Math.random()*mine.length)];
-          const nO={...soloOwners};delete nO[lk];setSoloOwners(nO);
-          const pts=lk.split('__');lostPK=pts[0];lostName=pts[1];
-          setFlash({name:lostName,provKey:lostPK,lost:true});setTimeout(()=>setFlash(null),900);
+      const newWrong = soloWrong + 1;
+      setSoloWrong(newWrong);
+      if (soloType === "exam") {
+        const mine = Object.keys(soloOwners);
+        let lostName = null,
+          lostProv = null;
+        if (mine.length) {
+          const lostKey = mine[Math.floor(Math.random() * mine.length)];
+          const newOwners = {
+            ...soloOwners
+          };
+          delete newOwners[lostKey];
+          setSoloOwners(newOwners);
+          const parts = lostKey.split('__');
+          lostProv = parts[0];
+          lostName = parts[1];
+          setFlash({
+            name: lostName,
+            provKey: lostProv,
+            lost: true
+          });
+          setTimeout(() => setFlash(null), 900);
         }
-        if(newW>=EXAM_FAIL){soloFinish(true);return;}
-        setMfb({msg:`땡! (${newW}/${EXAM_FAIL}회 오답)${lostName?` "${lostName}" 땅 잃었어요!`:""}`});
+        if (newWrong >= EXAM_FAIL_LIMIT) {
+          soloFinish(true);
+          return;
+        }
+        setMfb({
+          msg: `땡! (${newWrong}/${EXAM_FAIL_LIMIT}회 오답)${lostName ? ` "${lostName}" 땅을 잃었어요!` : ""}`
+        });
       } else {
-        setMfb({msg:"땡! 다시 도전해봐요 🔄"});
+        setMfb({
+          msg: "땡! 다시 도전해봐요 🔄"
+        });
       }
     }
   }
-
-  /* ── 팀전 ── */
-  async function createRoom(){
-    if(!myName.trim()){setError("이름을 입력해주세요");return;}
-    sessionStorage.setItem('ziri_name',myName);
-    const code=genCode();
-    const bt=Array.from({length:teamCount},(_,i)=>({name:teamNames[i]||TEAM_NAMES[i],color:TEAM_COLORS[i]}));
+  async function createRoom() {
+    if (!myName.trim()) {
+      setError("이름을 입력해주세요");
+      return;
+    }
+    sessionStorage.setItem('ziri_name', myName);
+    const code = genCode();
+    const builtTeams = Array.from({
+      length: teamCount
+    }, (_, i) => ({
+      name: teamNames[i] || TEAM_NAMES[i],
+      color: TEAM_COLORS[i]
+    }));
     await db.ref(`rooms/${code}`).set({
-      game:{mode:"nation",started:false,provIdx:0,order:[],cleared:false,hostId:myPid,teams:bt},
-      players:{[myPid]:{name:myName.trim(),teamIdx:0,joinedAt:Date.now()}}
+      game: {
+        mode: "nation",
+        started: false,
+        provIdx: 0,
+        order: [],
+        cleared: false,
+        hostId: myPid,
+        teams: builtTeams
+      },
+      players: {
+        [myPid]: {
+          name: myName.trim(),
+          teamIdx: 0,
+          joinedAt: Date.now()
+        }
+      }
     });
     db.ref(`rooms/${code}/players/${myPid}`).onDisconnect().remove();
-    setMyTeamIdx(0);setRoomCode(code);setIsHost(true);setPhase("waiting");setError("");
-  }
-
-  async function joinRoom(){
-    const code=inputCode.trim();
-    if(!code||code.length<4){setError("방 코드를 입력해주세요");return;}
-    if(!myName.trim()){setError("이름을 입력해주세요");return;}
-    const snap=await db.ref(`rooms/${code}`).get();
-    if(!snap.exists()){setError("존재하지 않는 방 코드예요");return;}
-    sessionStorage.setItem('ziri_name',myName);
-    const rData=snap.val();
-    const existing=rData?.players?.[myPid];
-    const ti=existing?.teamIdx??0;
-    await db.ref(`rooms/${code}/players/${myPid}`).set({name:myName.trim(),teamIdx:ti,joinedAt:Date.now()});
-    db.ref(`rooms/${code}/players/${myPid}`).onDisconnect().remove();
-    setMyTeamIdx(ti);setRoomCode(code);setIsHost(false);
-    if(rData?.game?.started){setPhase("game");startBgm();}
-    else setPhase("waiting");
+    setMyTeamIdx(0);
+    setRoomCode(code);
+    setIsHost(true);
+    setPhase("waiting");
     setError("");
   }
-
-  async function changeTeam(ti){
+  async function joinRoom() {
+    const code = inputCode.trim().toUpperCase();
+    if (!code || code.length < 4) {
+      setError("방 코드를 입력해주세요");
+      return;
+    }
+    if (!myName.trim()) {
+      setError("이름을 입력해주세요");
+      return;
+    }
+    const snap = await db.ref(`rooms/${code}/game`).get();
+    if (!snap.exists()) {
+      setError("존재하지 않는 방 코드예요");
+      return;
+    }
+    if (snap.val().started) {
+      setError("이미 시작된 게임이에요");
+      return;
+    }
+    sessionStorage.setItem('ziri_name', myName);
+    await db.ref(`rooms/${code}/players/${myPid}`).set({
+      name: myName.trim(),
+      teamIdx: 0,
+      joinedAt: Date.now()
+    });
+    db.ref(`rooms/${code}/players/${myPid}`).onDisconnect().remove();
+    setRoomCode(code);
+    setIsHost(false);
+    setPhase("waiting");
+    setError("");
+  }
+  async function changeTeam(ti) {
     setMyTeamIdx(ti);
     await db.ref(`rooms/${roomCode}/players/${myPid}/teamIdx`).set(ti);
   }
-  async function startGame(){
-    if(!isHost)return;
-    const mode=game.mode||"nation";
-    let order=[];
-    if(mode==="all")order=PROVINCES.map((_,i)=>i);
-    else if(mode!=="nation")order=[PROVINCES.findIndex(p=>p.key===mode)];
+  async function startGame() {
+    if (!isHost) return;
+    const mode = game.mode || "nation";
+    let order = [];
+    if (mode === "all") order = PROVINCES.map((_, i) => i);else if (mode !== "nation") order = [PROVINCES.findIndex(p => p.key === mode)];
     await db.ref(`rooms/${roomCode}/owners`).remove();
-    await db.ref(`rooms/${roomCode}/wrongCounts`).remove(); // 게임 시작 시 오답 카운트 초기화
-    await db.ref(`rooms/${roomCode}/game`).update({started:true,order,provIdx:0,cleared:false});
+    await db.ref(`rooms/${roomCode}/game`).update({
+      started: true,
+      order,
+      provIdx: 0,
+      cleared: false
+    });
   }
-  async function setGameMode(m){if(!isHost)return;await db.ref(`rooms/${roomCode}/game/mode`).set(m);}
-  function leaveRoom(){
+  async function setGameMode(m) {
+    if (!isHost) return;
+    await db.ref(`rooms/${roomCode}/game/mode`).set(m);
+  }
+  function leaveRoom() {
     db.ref(`rooms/${roomCode}/players/${myPid}`).remove();
-    setPhase("home");setRoomCode("");setRoomData(null);setIsHost(false);stopBgm();setSel(null);setMyTeamIdx(null);
+    setPhase("home");
+    setRoomCode("");
+    setRoomData(null);
+    setIsHost(false);
+    stopBgm();
+    setSel(null);
+    setMyTeamIdx(null);
   }
-  async function resetToLobby(){
-    if(!isHost)return;
+  async function resetToLobby() {
+    if (!isHost) return;
     await db.ref(`rooms/${roomCode}/owners`).remove();
-    await db.ref(`rooms/${roomCode}/wrongCounts`).remove(); // 오답 카운트 초기화
-    await db.ref(`rooms/${roomCode}/game`).update({started:false,cleared:false,provIdx:0});
+    await db.ref(`rooms/${roomCode}/game`).update({
+      started: false,
+      cleared: false,
+      provIdx: 0
+    });
   }
-  function pick(pk,name){
-    if(myTeamIdx===null)return;
-    const myWrong=roomData?.wrongCounts?.[myPid]||0;
-    if(myWrong>=TEAM_WRONG_LIMIT)return; // 오답 한도 초과 → 잠금
-    if(owners[fbk(pk,name)]!==undefined)return;
-    setSel(name);setSelProv(pk);setInput("");setMfb(null);
+  function pick(provKey, name) {
+    if (myTeamIdx === null) return;
+    if (owners[fbk(provKey, name)] !== undefined) return;
+    setSel(name);
+    setSelProv(provKey);
+    setInputAns("");
+    setMfb(null);
   }
-  async function submit(){
-    if(!sel||myTeamIdx===null)return;
-    if(normalize(inputAns)===normalize(sel)){
-      const key=fbk(selProv,sel);
-      const ref=db.ref(`rooms/${roomCode}/owners/${key}`);
-      const res=await ref.transaction(cur=>cur!=null?undefined:myTeamIdx);
-      if(res.committed){
-        sound(true);setFlash({name:sel,provKey:selProv,ti:myTeamIdx});setTimeout(()=>setFlash(null),700);
-        const newTotal=Object.keys(owners).length+1;
-        if(game.mode==="nation"&&newTotal>=TOTAL_REGIONS){await db.ref(`rooms/${roomCode}/game`).update({cleared:"END"});}
-        else if(prov){
-          const np=prov.regions.filter(r=>owners[fbk(prov.key,r.name)]!==undefined||(r.name===sel&&selProv===prov.key)).length;
-          if(np>=provTotal)await db.ref(`rooms/${roomCode}/game`).update({cleared:true});
+  async function submit() {
+    if (!sel || myTeamIdx === null) return;
+    if (normalize(inputAns) === normalize(sel)) {
+      const key = fbk(selProv, sel);
+      const ref = db.ref(`rooms/${roomCode}/owners/${key}`);
+      const res = await ref.transaction(cur => cur != null ? undefined : myTeamIdx);
+      if (res.committed) {
+        sound(true);
+        setFlash({
+          name: sel,
+          provKey: selProv,
+          ti: myTeamIdx
+        });
+        setTimeout(() => setFlash(null), 700);
+        const newTotal = Object.keys(owners).length + 1;
+        if (game.mode === "nation" && newTotal >= TOTAL_REGIONS) {
+          await db.ref(`rooms/${roomCode}/game`).update({
+            cleared: "END"
+          });
+        } else if (prov) {
+          const np = prov.regions.filter(r => owners[fbk(prov.key, r.name)] !== undefined || r.name === sel && selProv === prov.key).length;
+          if (np >= provTotal) await db.ref(`rooms/${roomCode}/game`).update({
+            cleared: true
+          });
         }
       } else {
-        sound(false);setMfb({msg:"아깝! 다른 팀이 먼저 차지했어요!"});return;
+        sound(false);
+        setMfb({
+          msg: "아깝! 다른 팀이 먼저 차지했어요!"
+        });
+        return;
       }
-      setSel(null);setSelProv(null);setInput("");setMfb(null);
+      setSel(null);
+      setSelProv(null);
+      setInputAns("");
+      setMfb(null);
     } else {
       sound(false);
-      // 오답 카운트 Firebase에 증가
-      const wrongSnap=await db.ref(`rooms/${roomCode}/wrongCounts/${myPid}`).get();
-      const newWrong=(wrongSnap.val()||0)+1;
-      await db.ref(`rooms/${roomCode}/wrongCounts/${myPid}`).set(newWrong);
-      const mine=Object.keys(owners).filter(k=>owners[k]===myTeamIdx);
-      let lostKey=null;
-      if(mine.length){lostKey=mine[Math.floor(Math.random()*mine.length)];await db.ref(`rooms/${roomCode}/owners/${lostKey}`).remove();}
-      const pts=lostKey?.split('__');const ln=pts?.[1]||null,lp=pts?.[0]||null;
-      const lockMsg=newWrong>=TEAM_WRONG_LIMIT?` (오답 ${TEAM_WRONG_LIMIT}회 초과 → 참여 잠금 🔒)`:"";
-      setMfb({msg:(ln?`땡! "${ln}" 땅을 잃었어요!`:"땡! 다시 도전!")+lockMsg});
-      if(ln){setFlash({name:ln,provKey:lp,ti:myTeamIdx,lost:true});setTimeout(()=>setFlash(null),900);}
-      if(newWrong>=TEAM_WRONG_LIMIT){setTimeout(()=>{setSel(null);setSelProv(null);setMfb(null);},1500);}
+      const mine = Object.keys(owners).filter(k => owners[k] === myTeamIdx);
+      let lostKey = null;
+      if (mine.length) {
+        lostKey = mine[Math.floor(Math.random() * mine.length)];
+        await db.ref(`rooms/${roomCode}/owners/${lostKey}`).remove();
+      }
+      const parts = lostKey?.split('__');
+      const lostName = parts?.[1] || null,
+        lostProvKey = parts?.[0] || null;
+      setMfb({
+        msg: lostName ? `땡! "${lostName}" 땅을 잃었어요!` : "땡! 다시 도전!"
+      });
+      if (lostName) {
+        setFlash({
+          name: lostName,
+          provKey: lostProvKey,
+          ti: myTeamIdx,
+          lost: true
+        });
+        setTimeout(() => setFlash(null), 900);
+      }
     }
   }
-  async function nextProv(){
-    if(!isHost)return;
-    const ni=(game.provIdx||0)+1;
-    if(ni>=(game.order||[]).length)await db.ref(`rooms/${roomCode}/game`).update({cleared:"END"});
-    else{
-      await db.ref(`rooms/${roomCode}/owners`).remove();
-      await db.ref(`rooms/${roomCode}/game`).update({cleared:false,provIdx:ni});
+  async function nextProv() {
+    if (!isHost) return;
+    const nextIdx = (game.provIdx || 0) + 1;
+    if (nextIdx >= (game.order || []).length) await db.ref(`rooms/${roomCode}/game`).update({
+      cleared: "END"
+    });else await db.ref(`rooms/${roomCode}/game`).update({
+      cleared: false,
+      provIdx: nextIdx
+    });
+  }
+  const renderTeamRegion = (provKey, r) => {
+    const key = fbk(provKey, r.name);
+    const ti = owners[key];
+    const owned = ti !== undefined;
+    const color = owned ? teams[ti]?.color || "#94a3b8" : "#cbd5e1";
+    const isF = flash && flash.name === r.name && flash.provKey === provKey;
+    const isSel = sel === r.name && selProv === provKey;
+    return React.createElement("g", {
+      key: key,
+      onClick: () => pick(provKey, r.name),
+      style: {
+        cursor: owned ? "default" : "pointer"
+      }
+    }, owned && React.createElement("circle", {
+      cx: r.x,
+      cy: r.y,
+      r: isF ? sz * 1.7 : sz * 1.25,
+      fill: color,
+      opacity: isF ? 0.8 : 0.45,
+      style: {
+        transition: "all .3s"
+      }
+    }), isF && flash.lost && React.createElement("circle", {
+      cx: r.x,
+      cy: r.y,
+      r: sz * 1.5,
+      fill: "none",
+      stroke: "#dc2626",
+      strokeWidth: sz * 0.18
+    }), React.createElement("rect", {
+      x: r.x - pillW / 2,
+      y: r.y - pillH / 2,
+      width: pillW,
+      height: pillH,
+      rx: pillH / 2,
+      fill: owned ? color : "#fff",
+      stroke: isSel ? "#0f172a" : owned ? color : "#cbd5e1",
+      strokeWidth: isSel ? sz * 0.22 : sz * 0.13,
+      opacity: owned ? 1 : 0.95
+    }), React.createElement("text", {
+      x: r.x,
+      y: r.y + sz * 0.34,
+      textAnchor: "middle",
+      fontSize: owned ? sz * 0.82 : sz,
+      fontWeight: "700",
+      fill: owned ? "#fff" : "#475569",
+      style: {
+        fontFamily: "'Jua',sans-serif",
+        letterSpacing: owned ? 0 : 1
+      }
+    }, owned ? r.name : choseong(r.name)));
+  };
+  const renderSoloRegion = (provKey, r) => {
+    const key = fbk(provKey, r.name);
+    const owned = !!soloOwners[key];
+    const color = soloType === "exam" ? EXAM_COLOR : SOLO_COLOR;
+    const isF = flash && flash.name === r.name && flash.provKey === provKey;
+    const isSel = sel === r.name && selProv === provKey;
+    return React.createElement("g", {
+      key: key,
+      onClick: () => soloPickRegion(provKey, r.name),
+      style: {
+        cursor: owned ? "default" : "pointer"
+      }
+    }, owned && React.createElement("circle", {
+      cx: r.x,
+      cy: r.y,
+      r: isF ? sz * 1.7 : sz * 1.25,
+      fill: color,
+      opacity: isF ? 0.8 : 0.45,
+      style: {
+        transition: "all .3s"
+      }
+    }), isF && flash.lost && React.createElement("circle", {
+      cx: r.x,
+      cy: r.y,
+      r: sz * 1.5,
+      fill: "none",
+      stroke: "#dc2626",
+      strokeWidth: sz * 0.18
+    }), React.createElement("rect", {
+      x: r.x - pillW / 2,
+      y: r.y - pillH / 2,
+      width: pillW,
+      height: pillH,
+      rx: pillH / 2,
+      fill: owned ? color : "#fff",
+      stroke: isSel ? "#0f172a" : owned ? color : "#cbd5e1",
+      strokeWidth: isSel ? sz * 0.22 : sz * 0.13,
+      opacity: owned ? 1 : 0.95
+    }), React.createElement("text", {
+      x: r.x,
+      y: r.y + sz * 0.34,
+      textAnchor: "middle",
+      fontSize: owned ? sz * 0.82 : sz,
+      fontWeight: "700",
+      fill: owned ? "#fff" : "#475569",
+      style: {
+        fontFamily: "'Jua',sans-serif",
+        letterSpacing: owned ? 0 : 1
+      }
+    }, owned ? r.name : choseong(r.name)));
+  };
+  if (phase === "home") return React.createElement("div", {
+    style: S.page
+  }, React.createElement("div", {
+    style: S.card
+  }, React.createElement("div", {
+    style: {
+      fontSize: 52
     }
+  }, "🗺️"), React.createElement("h1", {
+    style: S.h1
+  }, "우리나라 땅따먹기"), React.createElement("p", {
+    style: S.sub
+  }, "초성 보고 지역 이름 맞추기!"), React.createElement("div", {
+    style: {
+      borderBottom: "2px solid #f1f5f9",
+      margin: "16px 0 14px",
+      paddingBottom: 14
+    }
+  }, React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#94a3b8",
+      marginBottom: 8,
+      fontWeight: 700,
+      letterSpacing: 1
+    }
+  }, "👥 팀 대결"), React.createElement("button", {
+    onClick: () => setPhase("creating"),
+    style: {
+      ...S.btn,
+      background: "#0f172a",
+      color: "#fff",
+      marginBottom: 8
+    }
+  }, "🏠 방 만들기 (선생님)"), React.createElement("button", {
+    onClick: () => setPhase("joining"),
+    style: {
+      ...S.btn,
+      background: "#3b82f6",
+      color: "#fff"
+    }
+  }, "🚪 방 참여하기 (학생)")), React.createElement("div", null, React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#94a3b8",
+      marginBottom: 8,
+      fontWeight: 700,
+      letterSpacing: 1
+    }
+  }, "🧑 1인용"), React.createElement("button", {
+    onClick: () => {
+      setSoloType("exam");
+      setPhase("solo_setup");
+    },
+    style: {
+      ...S.btn,
+      background: EXAM_COLOR,
+      color: "#fff",
+      marginBottom: 8
+    }
+  }, "📝 시험 모드"), React.createElement("button", {
+    onClick: () => {
+      setSoloType("practice");
+      setPhase("solo_setup");
+    },
+    style: {
+      ...S.btn,
+      background: "#0891b2",
+      color: "#fff"
+    }
+  }, "🎮 혼자 연습"))));
+  if (phase === "creating") return React.createElement("div", {
+    style: S.page
+  }, React.createElement("div", {
+    style: S.card
+  }, React.createElement("h2", {
+    style: S.h2
+  }, "🏠 방 만들기"), React.createElement("div", {
+    style: S.lbl
+  }, "선생님 이름"), React.createElement("input", {
+    value: myName,
+    onChange: e => setMyName(e.target.value),
+    placeholder: "이름 입력",
+    style: S.inp,
+    maxLength: 8
+  }), React.createElement("div", {
+    style: {
+      ...S.lbl,
+      marginTop: 16
+    }
+  }, "팀 수"), React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8,
+      justifyContent: "center",
+      marginTop: 4
+    }
+  }, [2, 3, 4, 5, 6].map(n => React.createElement("button", {
+    key: n,
+    onClick: () => setTeamCount(n),
+    style: {
+      ...S.btn,
+      width: "auto",
+      padding: "10px 20px",
+      background: teamCount === n ? "#0f172a" : "#fff",
+      color: teamCount === n ? "#fff" : "#475569",
+      border: "2px solid #e2e8f0",
+      boxShadow: "none"
+    }
+  }, n, "팀"))), React.createElement("div", {
+    style: {
+      ...S.lbl,
+      marginTop: 14
+    }
+  }, "팀 이름 수정 (선택)"), Array.from({
+    length: teamCount
+  }).map((_, i) => React.createElement("div", {
+    key: i,
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 8,
+      marginTop: 6
+    }
+  }, React.createElement("div", {
+    style: {
+      width: 14,
+      height: 14,
+      borderRadius: "50%",
+      background: TEAM_COLORS[i],
+      flexShrink: 0
+    }
+  }), React.createElement("input", {
+    value: teamNames[i],
+    onChange: e => {
+      const v = e.target.value;
+      setTeamNames(ns => ns.map((x, k) => k === i ? v : x));
+    },
+    style: {
+      ...S.inp,
+      flex: 1
+    },
+    maxLength: 8
+  }))), error && React.createElement("div", {
+    style: S.err
+  }, error), React.createElement("button", {
+    onClick: createRoom,
+    style: {
+      ...S.btn,
+      background: "#0f172a",
+      color: "#fff",
+      marginTop: 20
+    }
+  }, "방 만들기 →"), React.createElement("button", {
+    onClick: () => {
+      setPhase("home");
+      setError("");
+    },
+    style: {
+      ...S.ghost,
+      marginTop: 10,
+      width: "100%"
+    }
+  }, "← 돌아가기")));
+  if (phase === "joining") return React.createElement("div", {
+    style: S.page
+  }, React.createElement("div", {
+    style: S.card
+  }, React.createElement("h2", {
+    style: S.h2
+  }, "🚪 방 참여하기"), React.createElement("div", {
+    style: S.lbl
+  }, "방 코드"), React.createElement("input", {
+    value: inputCode,
+    onChange: e => setInputCode(e.target.value.toUpperCase()),
+    placeholder: "XXXXXX",
+    style: {
+      ...S.inp,
+      textAlign: "center",
+      fontSize: 24,
+      letterSpacing: 5
+    },
+    maxLength: 6
+  }), React.createElement("div", {
+    style: {
+      ...S.lbl,
+      marginTop: 14
+    }
+  }, "내 이름"), React.createElement("input", {
+    value: myName,
+    onChange: e => setMyName(e.target.value),
+    placeholder: "이름 입력",
+    style: S.inp,
+    maxLength: 8
+  }), error && React.createElement("div", {
+    style: S.err
+  }, error), React.createElement("button", {
+    onClick: joinRoom,
+    style: {
+      ...S.btn,
+      background: "#3b82f6",
+      color: "#fff",
+      marginTop: 20
+    }
+  }, "다음 →"), React.createElement("button", {
+    onClick: () => {
+      setPhase("home");
+      setError("");
+    },
+    style: {
+      ...S.ghost,
+      marginTop: 10,
+      width: "100%"
+    }
+  }, "← 돌아가기")));
+  if (phase === "waiting") {
+    const playerList = Object.entries(players).sort((a, b) => a[1].joinedAt - b[1].joinedAt);
+    const myP = players[myPid];
+    const currentTeamIdx = myP?.teamIdx ?? myTeamIdx ?? 0;
+    return React.createElement("div", {
+      style: S.page
+    }, React.createElement("div", {
+      style: S.card
+    }, React.createElement("div", {
+      style: {
+        fontSize: 34
+      }
+    }, isHost ? "🏠 방장" : "⏳ 대기 중"), React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: "#94a3b8",
+        margin: "4px 0 2px"
+      }
+    }, "방 코드를 친구들에게 알려주세요"), React.createElement("div", {
+      style: {
+        fontSize: 36,
+        fontWeight: 900,
+        letterSpacing: 8,
+        background: "#f1f5f9",
+        borderRadius: 14,
+        padding: "12px 20px",
+        margin: "8px 0",
+        color: "#0f172a"
+      }
+    }, roomCode), React.createElement("div", {
+      style: S.lbl
+    }, "내 팀 선택"), React.createElement("div", {
+      style: {
+        display: "flex",
+        gap: 6,
+        justifyContent: "center",
+        flexWrap: "wrap",
+        marginBottom: 12
+      }
+    }, teams.map((t, i) => React.createElement("button", {
+      key: i,
+      onClick: () => changeTeam(i),
+      style: {
+        fontFamily: "'Jua',sans-serif",
+        padding: "10px 16px",
+        borderRadius: 12,
+        border: `3px solid ${t.color}`,
+        background: currentTeamIdx === i ? t.color : "#fff",
+        color: currentTeamIdx === i ? "#fff" : t.color,
+        fontWeight: 700,
+        fontSize: 14,
+        cursor: "pointer"
+      }
+    }, t.name))), React.createElement("div", {
+      style: {
+        display: "flex",
+        gap: 8,
+        flexWrap: "wrap",
+        justifyContent: "center",
+        marginBottom: 14
+      }
+    }, teams.map((t, i) => {
+      const members = playerList.filter(([, p]) => p.teamIdx === i);
+      return React.createElement("div", {
+        key: i,
+        style: {
+          flex: "1 1 120px",
+          minWidth: 100,
+          background: t.color + "18",
+          border: `2px solid ${t.color}44`,
+          borderRadius: 12,
+          padding: "8px 10px"
+        }
+      }, React.createElement("div", {
+        style: {
+          fontWeight: 800,
+          color: t.color,
+          fontSize: 13,
+          marginBottom: 4
+        }
+      }, t.name, " (", members.length, "명)"), members.map(([pid, p]) => React.createElement("div", {
+        key: pid,
+        style: {
+          fontSize: 12,
+          color: "#475569"
+        }
+      }, p.name, pid === myPid ? " 👈" : "", pid === game.hostId ? " 👑" : "")));
+    })), isHost && React.createElement(React.Fragment, null, React.createElement("div", {
+      style: S.lbl
+    }, "게임 모드"), React.createElement("button", {
+      onClick: () => setGameMode("nation"),
+      style: {
+        ...S.modeBtn,
+        ...(game.mode === "nation" ? S.modeBtnOn : {})
+      }
+    }, "🇰🇷 전국 한방"), React.createElement("button", {
+      onClick: () => setGameMode("all"),
+      style: {
+        ...S.modeBtn,
+        ...(game.mode === "all" ? S.modeBtnOn : {}),
+        marginTop: 4
+      }
+    }, "📍 전국 순회"), React.createElement("div", {
+      style: {
+        display: "flex",
+        gap: 5,
+        flexWrap: "wrap",
+        justifyContent: "center",
+        marginTop: 5
+      }
+    }, PROVINCES.map(p => React.createElement("button", {
+      key: p.key,
+      onClick: () => setGameMode(p.key),
+      style: {
+        ...S.modeSmall,
+        ...(game.mode === p.key ? S.modeBtnOn : {})
+      }
+    }, p.name))), React.createElement("button", {
+      onClick: startGame,
+      style: {
+        ...S.btn,
+        background: "#22c55e",
+        color: "#fff",
+        fontSize: 18,
+        marginTop: 14
+      }
+    }, "🎮 게임 시작!")), !isHost && React.createElement("div", {
+      style: {
+        color: "#64748b",
+        fontSize: 13,
+        padding: "10px",
+        background: "#f8fafc",
+        borderRadius: 11,
+        border: "2px solid #e2e8f0"
+      }
+    }, "방장이 게임을 시작할 때까지 기다려요 ⏳"), React.createElement("button", {
+      onClick: leaveRoom,
+      style: {
+        ...S.ghost,
+        marginTop: 10,
+        width: "100%"
+      }
+    }, "← 나가기")));
   }
-
-  /* ── 지역 렌더 공용 ── */
-  function makeRegionEl(pk,r,owned,color,onCk){
-    const key=fbk(pk,r.name);
-    const isF=flash&&flash.name===r.name&&flash.provKey===pk;
-    const isSel=sel===r.name&&selProv===pk;
-    return(
-      <g key={key} onClick={onCk} style={{cursor:owned?"default":"pointer"}}>
-        {owned&&<circle cx={r.x} cy={r.y} r={isF?sz*1.7:sz*1.25} fill={color} opacity={isF?0.8:0.45} style={{transition:"all .3s"}}/>}
-        {isF&&flash.lost&&<circle cx={r.x} cy={r.y} r={sz*1.5} fill="none" stroke="#dc2626" strokeWidth={sz*0.18}/>}
-        <rect x={r.x-pillW/2} y={r.y-pillH/2} width={pillW} height={pillH} rx={pillH/2}
-          fill={owned?color:"#fff"} stroke={isSel?"#0f172a":(owned?color:"#cbd5e1")}
-          strokeWidth={isSel?sz*0.22:sz*0.13} opacity={owned?1:0.95}/>
-        <text x={r.x} y={r.y+sz*0.34} textAnchor="middle" fontSize={owned?sz*0.82:sz} fontWeight="700"
-          fill={owned?"#fff":"#475569"} style={{fontFamily:"'Jua',sans-serif",letterSpacing:owned?0:1}}>
-          {owned?r.name:choseong(r.name)}
-        </text>
-      </g>
-    );
+  if (phase === "result") {
+    const isEnd = game.cleared === "END";
+    const medal = ["🥇", "🥈", "🥉"];
+    const sorted = teams.map((t, i) => ({
+      t,
+      i,
+      score: scores[i] || 0
+    })).sort((a, b) => b.score - a.score);
+    return React.createElement("div", {
+      style: S.page
+    }, React.createElement("div", {
+      style: S.card
+    }, React.createElement("div", {
+      style: {
+        fontSize: 48
+      }
+    }, isEnd ? "🏆" : "🎉"), React.createElement("h2", {
+      style: {
+        margin: "4px 0 14px",
+        fontSize: 22
+      }
+    }, isEnd ? "게임 종료!" : `${prov?.name || ""} 클리어!`), React.createElement("div", {
+      style: {
+        display: "flex",
+        flexDirection: "column",
+        gap: 8,
+        marginBottom: 14
+      }
+    }, sorted.map(({
+      t,
+      i,
+      score
+    }, rank) => React.createElement("div", {
+      key: i,
+      style: {
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        padding: "10px 16px",
+        background: t.color + "22",
+        borderRadius: 12,
+        border: `2px solid ${t.color}44`,
+        outline: i === myTeamIdx ? `3px solid ${t.color}` : "none"
+      }
+    }, React.createElement("span", {
+      style: {
+        fontWeight: 800,
+        color: t.color
+      }
+    }, medal[rank] || "", " ", t.name, i === myTeamIdx ? " (내 팀)" : ""), React.createElement("span", {
+      style: {
+        fontWeight: 800,
+        fontSize: 18
+      }
+    }, score, "칸")))), isHost && !isEnd && React.createElement("button", {
+      onClick: nextProv,
+      style: {
+        ...S.btn,
+        background: "#0f172a",
+        color: "#fff"
+      }
+    }, (game.provIdx || 0) + 1 < (game.order || []).length ? `다음 ▶` : "최종 결과 ▶"), isHost && React.createElement("button", {
+      onClick: resetToLobby,
+      style: {
+        ...S.btn,
+        background: "#6366f1",
+        color: "#fff",
+        marginTop: 8
+      }
+    }, "🔄 다시 하기"), !isHost && React.createElement("div", {
+      style: {
+        color: "#64748b",
+        fontSize: 13,
+        padding: "10px",
+        background: "#f8fafc",
+        borderRadius: 11,
+        border: "2px solid #e2e8f0",
+        marginTop: 8
+      }
+    }, "방장이 다음을 선택 중이에요 ⏳"), React.createElement("button", {
+      onClick: leaveRoom,
+      style: {
+        ...S.ghost,
+        marginTop: 10,
+        width: "100%"
+      }
+    }, "← 나가기")));
   }
-  const renderTeam=(pk,r)=>{
-    const ti=owners[fbk(pk,r.name)];const owned=ti!==undefined;
-    return makeRegionEl(pk,r,owned,owned?(teams[ti]?.color||"#94a3b8"):"#cbd5e1",()=>pick(pk,r.name));
-  };
-  const renderSolo=(pk,r)=>{
-    const owned=!!soloOwners[fbk(pk,r.name)];
-    const color=soloType==="exam"?EXAM_CLR:SOLO_CLR;
-    return makeRegionEl(pk,r,owned,color,()=>soloPickRegion(pk,r.name));
-  };
-
-  /* ── 지도 공용 컴포넌트 ── */
-  const MapBox=({children,accent})=>(
-    <div style={{position:"relative",width:"100%",maxWidth:isNation?460:560,margin:"0 auto",
-      aspectRatio:isNation?`${MAP_W}/${MAP_H}`:"1/1",
-      borderRadius:16,overflow:"hidden",background:"#fff",
-      border:`2px solid ${accent||"#e2e8f0"}44`,boxShadow:"0 8px 24px -8px rgba(0,0,0,.2)"}}>
-      <svg viewBox={viewBox} preserveAspectRatio="xMidYMid meet"
-        style={{position:"absolute",inset:0,width:"100%",height:"100%"}}>
-        <image href={MAP_BG} xlinkHref={MAP_BG} x="0" y="0" width={MAP_W} height={MAP_H} preserveAspectRatio="none"/>
-        {children}
-      </svg>
-    </div>
-  );
-
-  /* ── 답변 모달 ── */
-  const AnswerModal=({onSubmit,onClose,accent,extraInfo})=>(
-    <div style={S.overlay} onClick={onClose}>
-      <div style={S.modal} onClick={e=>e.stopPropagation()}>
-        <div style={{fontSize:12,color:"#94a3b8",marginBottom:4}}>
-          {phase==="solo_game"&&isNation?`${PROVINCES.find(p=>p.key===selProv)?.name} · `:""}이 땅은?
-        </div>
-        <div style={{fontSize:44,fontWeight:900,letterSpacing:8,background:"#f8fafc",borderRadius:14,padding:"10px 0",margin:"0 0 10px"}}>
-          {choseong(sel||"")}
-        </div>
-        {extraInfo}
-        <input ref={inputRef} autoFocus value={inputAns}
-          placeholder="지역 이름 입력 (예: 대전)"
-          onKeyDown={e=>{if(e.key==="Enter")onSubmit();}}
-          onChange={e=>{setInput(e.target.value);setMfb(null);}}
-          style={{fontFamily:"'Jua',sans-serif",fontSize:20,padding:"11px 14px",borderRadius:13,border:"2px solid #e2e8f0",width:"100%",textAlign:"center",outline:"none",marginBottom:4}}/>
-        {mfb&&<div style={{fontSize:13,fontWeight:700,color:"#dc2626",marginBottom:6}}>{mfb.msg}</div>}
-        <button onClick={onSubmit}
-          style={{fontFamily:"'Jua',sans-serif",marginTop:8,width:"100%",fontSize:17,padding:13,borderRadius:13,border:"none",background:accent||"#0f172a",color:"#fff",fontWeight:700,cursor:"pointer",boxShadow:"0 4px 0 rgba(0,0,0,.18)"}}>
-          정답 제출 🚩
-        </button>
-        <button onClick={onClose}
-          style={{fontFamily:"'Jua',sans-serif",marginTop:8,width:"100%",fontSize:14,padding:"9px",borderRadius:11,border:"2px solid #e2e8f0",background:"#fff",color:"#64748b",cursor:"pointer"}}>
-          닫기
-        </button>
-      </div>
-    </div>
-  );
-
-  /* ══════════════════════════════
-     화면 렌더링
-  ══════════════════════════════ */
-
-  if(phase==="home") return(
-    <div style={S.page}><div style={S.card}>
-      <div style={{fontSize:52}}>🗺️</div>
-      <h1 style={S.h1}>우리나라 땅따먹기</h1>
-      <p style={S.sub}>초성 보고 지역 이름 맞추기!</p>
-      <div style={{borderBottom:"2px solid #f1f5f9",margin:"16px 0 14px",paddingBottom:14}}>
-        <div style={S.sectionLabel}>👥 팀 대결</div>
-        <button onClick={()=>setPhase("creating")} style={{...S.btn,background:"#0f172a",color:"#fff",marginBottom:8}}>🏠 방 만들기 (선생님)</button>
-        <button onClick={()=>setPhase("joining")}  style={{...S.btn,background:"#3b82f6",color:"#fff"}}>🚪 방 참여하기 (학생)</button>
-      </div>
-      <div>
-        <div style={S.sectionLabel}>🧑 1인용</div>
-        <button onClick={()=>{setSoloType("exam");    setPhase("solo_setup");}} style={{...S.btn,background:EXAM_CLR,color:"#fff",marginBottom:8}}>📝 시험 모드</button>
-        <button onClick={()=>{setSoloType("practice");setPhase("solo_setup");}} style={{...S.btn,background:SOLO_CLR,color:"#fff"}}>🎮 혼자 연습</button>
-      </div>
-    </div></div>
-  );
-
-  if(phase==="creating") return(
-    <div style={S.page}><div style={S.card}>
-      <h2 style={S.h2}>🏠 방 만들기</h2>
-      <div style={S.lbl}>선생님 이름</div>
-      <input value={myName} onChange={e=>setMyName(e.target.value)} placeholder="이름 입력" style={S.inp} maxLength={8}/>
-      <div style={{...S.lbl,marginTop:14}}>팀 수</div>
-      <div style={{display:"flex",gap:8,justifyContent:"center"}}>
-        {[2,3,4].map(n=>(
-          <button key={n} onClick={()=>setTeamCount(n)}
-            style={{...S.btn,width:"auto",padding:"10px 24px",background:teamCount===n?"#0f172a":"#fff",color:teamCount===n?"#fff":"#475569",border:"2px solid #e2e8f0",boxShadow:"none"}}>
-            {n}팀
-          </button>
-        ))}
-      </div>
-      <div style={{...S.lbl,marginTop:14}}>팀 이름 (선택)</div>
-      {Array.from({length:teamCount}).map((_,i)=>(
-        <div key={i} style={{display:"flex",alignItems:"center",gap:8,marginTop:6}}>
-          <div style={{width:14,height:14,borderRadius:"50%",background:TEAM_COLORS[i],flexShrink:0}}/>
-          <input value={teamNames[i]} onChange={e=>{const v=e.target.value;setTeamNames(ns=>ns.map((x,k)=>k===i?v:x));}}
-            style={{...S.inp,flex:1}} maxLength={8}/>
-        </div>
-      ))}
-      {error&&<div style={S.err}>{error}</div>}
-      <button onClick={createRoom} style={{...S.btn,background:"#0f172a",color:"#fff",marginTop:18}}>방 만들기 →</button>
-      <button onClick={()=>{setPhase("home");setError("");}} style={{...S.ghost,marginTop:10,width:"100%"}}>← 돌아가기</button>
-    </div></div>
-  );
-
-  if(phase==="joining") return(
-    <div style={S.page}><div style={S.card}>
-      <h2 style={S.h2}>🚪 방 참여하기</h2>
-      <div style={S.lbl}>방 코드 (숫자 4자리)</div>
-      <input value={inputCode} onChange={e=>setInputCode(e.target.value.replace(/\D/g,""))}
-        placeholder="1234" inputMode="numeric" pattern="[0-9]*"
-        style={{...S.inp,textAlign:"center",fontSize:32,letterSpacing:8,fontWeight:900}} maxLength={4}/>
-      <div style={{...S.lbl,marginTop:14}}>내 이름</div>
-      <input value={myName} onChange={e=>setMyName(e.target.value)} placeholder="이름 입력" style={S.inp} maxLength={8}/>
-      {error&&<div style={S.err}>{error}</div>}
-      <button onClick={joinRoom} style={{...S.btn,background:"#3b82f6",color:"#fff",marginTop:18}}>참여하기 →</button>
-      <button onClick={()=>{setPhase("home");setError("");}} style={{...S.ghost,marginTop:10,width:"100%"}}>← 돌아가기</button>
-    </div></div>
-  );
-
-  if(phase==="waiting"){
-    const pl=Object.entries(players).sort((a,b)=>a[1].joinedAt-b[1].joinedAt);
-    const curTi=players[myPid]?.teamIdx??myTeamIdx??0;
-    return(
-      <div style={S.page}><div style={S.card}>
-        <div style={{fontSize:30}}>{isHost?"🏠 방장":"⏳ 대기 중"}</div>
-        <div style={{fontSize:11,color:"#94a3b8",margin:"4px 0 2px"}}>이 코드를 칠판에 적어주세요</div>
-        <div style={{fontSize:44,fontWeight:900,letterSpacing:10,background:"#f1f5f9",borderRadius:14,padding:"12px 20px",margin:"8px 0",color:"#0f172a"}}>{roomCode}</div>
-        <div style={S.lbl}>내 팀 선택</div>
-        <div style={{display:"flex",gap:6,justifyContent:"center",flexWrap:"wrap",marginBottom:12}}>
-          {teams.map((t,i)=>(
-            <button key={i} onClick={()=>changeTeam(i)}
-              style={{fontFamily:"'Jua',sans-serif",padding:"10px 18px",borderRadius:12,border:`3px solid ${t.color}`,
-                background:curTi===i?t.color:"#fff",color:curTi===i?"#fff":t.color,fontWeight:700,fontSize:15,cursor:"pointer"}}>
-              {t.name}
-            </button>
-          ))}
-        </div>
-        <div style={{display:"flex",gap:8,flexWrap:"wrap",justifyContent:"center",marginBottom:14}}>
-          {teams.map((t,i)=>{
-            const m=pl.filter(([,p])=>p.teamIdx===i);
-            return(
-              <div key={i} style={{flex:"1 1 110px",minWidth:90,background:t.color+"18",border:`2px solid ${t.color}44`,borderRadius:12,padding:"8px 10px"}}>
-                <div style={{fontWeight:800,color:t.color,fontSize:13,marginBottom:3}}>{t.name} ({m.length}명)</div>
-                {m.map(([pid,p])=>(
-                  <div key={pid} style={{fontSize:12,color:"#475569"}}>{p.name}{pid===myPid?" 👈":""}{pid===game.hostId?" 👑":""}</div>
-                ))}
-              </div>
-            );
-          })}
-        </div>
-        {isHost&&(<>
-          <div style={S.lbl}>게임 모드</div>
-          <button onClick={()=>setGameMode("nation")} style={{...S.modeBtn,...(game.mode==="nation"?S.modeBtnOn:{})}}>🇰🇷 전국 한방</button>
-          <button onClick={()=>setGameMode("all")}    style={{...S.modeBtn,...(game.mode==="all"?S.modeBtnOn:{}),marginTop:4}}>🔄 전국 순회 (도별 차례로)</button>
-          <div style={{display:"flex",gap:5,flexWrap:"wrap",justifyContent:"center",marginTop:5}}>
-            {PROVINCES.map(p=><button key={p.key} onClick={()=>setGameMode(p.key)}
-              style={{...S.modeSmall,...(game.mode===p.key?S.modeBtnOn:{})}}>{p.name}</button>)}
-          </div>
-          <button onClick={startGame} style={{...S.btn,background:"#22c55e",color:"#fff",fontSize:18,marginTop:14}}>🎮 게임 시작!</button>
-        </>)}
-        {!isHost&&<div style={{color:"#64748b",fontSize:13,padding:"10px",background:"#f8fafc",borderRadius:11,border:"2px solid #e2e8f0"}}>방장이 게임을 시작할 때까지 기다려요 ⏳</div>}
-        <button onClick={leaveRoom} style={{...S.ghost,marginTop:10,width:"100%"}}>← 나가기</button>
-      </div></div>
-    );
+  if (phase === "solo_setup") {
+    const isExam = soloType === "exam";
+    const accent = isExam ? EXAM_COLOR : "#0891b2";
+    const soloProv = soloMap !== "nation" ? PROVINCES.find(p => p.key === soloMap) : null;
+    const regionCount = soloProv ? soloProv.regions.length : TOTAL_REGIONS;
+    return React.createElement("div", {
+      style: S.page
+    }, React.createElement("div", {
+      style: S.card
+    }, React.createElement("div", {
+      style: {
+        fontSize: 44
+      }
+    }, isExam ? "📝" : "🎮"), React.createElement("h2", {
+      style: {
+        ...S.h2,
+        color: accent
+      }
+    }, isExam ? "시험 모드" : "혼자 연습"), isExam && React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: "#dc2626",
+        background: "#fef2f2",
+        borderRadius: 10,
+        padding: "8px 12px",
+        marginBottom: 12,
+        border: "1px solid #fecaca"
+      }
+    }, "⚠️ 오답 ", EXAM_FAIL_LIMIT, "회 이상이면 불합격!", React.createElement("br", null), "틀릴 때마다 내 땅 하나가 사라져요"), !isExam && React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: "#0891b2",
+        background: "#ecfeff",
+        borderRadius: 10,
+        padding: "8px 12px",
+        marginBottom: 12,
+        border: "1px solid #a5f3fc"
+      }
+    }, "💡 틀려도 패널티 없어요. 자유롭게 연습!"), React.createElement("div", {
+      style: S.lbl
+    }, "범위 선택 ", React.createElement("span", {
+      style: {
+        color: accent
+      }
+    }, "(", regionCount, "개 지역)")), React.createElement("button", {
+      onClick: () => setSoloMap("nation"),
+      style: {
+        ...S.modeBtn,
+        ...(soloMap === "nation" ? {
+          background: accent,
+          color: "#fff",
+          borderColor: accent
+        } : {})
+      }
+    }, "🇰🇷 전국 전체 (", TOTAL_REGIONS, "개)"), React.createElement("div", {
+      style: {
+        display: "flex",
+        gap: 5,
+        flexWrap: "wrap",
+        justifyContent: "center",
+        marginTop: 6
+      }
+    }, PROVINCES.map(p => React.createElement("button", {
+      key: p.key,
+      onClick: () => setSoloMap(p.key),
+      style: {
+        ...S.modeSmall,
+        ...(soloMap === p.key ? {
+          background: accent,
+          color: "#fff",
+          borderColor: accent
+        } : {})
+      }
+    }, p.name, " (", p.regions.length, ")"))), React.createElement("button", {
+      onClick: soloStartGame,
+      style: {
+        ...S.btn,
+        background: accent,
+        color: "#fff",
+        fontSize: 18,
+        marginTop: 18
+      }
+    }, isExam ? "📝 시험 시작!" : "🎮 연습 시작!"), React.createElement("button", {
+      onClick: () => setPhase("home"),
+      style: {
+        ...S.ghost,
+        marginTop: 10,
+        width: "100%"
+      }
+    }, "← 돌아가기")));
   }
-
-  if(phase==="result"){
-    const isEnd=game.cleared==="END";
-    const medal=["🥇","🥈","🥉"];
-    const sorted=teams.map((t,i)=>({t,i,score:scores[i]||0})).sort((a,b)=>b.score-a.score);
-    const nextIdx=(game.provIdx||0)+1;
-    const nextProvName=game.order&&nextIdx<(game.order||[]).length?PROVINCES[game.order[nextIdx]]?.name:null;
-    return(
-      <div style={S.page}><div style={S.card}>
-        <div style={{fontSize:48}}>{isEnd?"🏆":"🎉"}</div>
-        <h2 style={{margin:"4px 0 4px",fontSize:20}}>{isEnd?"최종 결과!":(prov?.name?`${prov.name} 완료!`:"라운드 완료!")}</h2>
-        {/* 방 코드 표시 (재입장용) */}
-        <div style={{fontSize:11,color:"#94a3b8",marginBottom:10}}>방 코드: <b style={{color:"#0f172a",letterSpacing:4}}>{roomCode}</b> (재입장 가능)</div>
-        <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:16}}>
-          {sorted.map(({t,i,score},rank)=>(
-            <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 16px",background:t.color+"22",borderRadius:12,border:`2px solid ${t.color}44`,outline:i===myTeamIdx?`3px solid ${t.color}`:"none"}}>
-              <span style={{fontWeight:800,color:t.color}}>{medal[rank]||""} {t.name}{i===myTeamIdx?" (내 팀)":""}</span>
-              <span style={{fontWeight:800,fontSize:18}}>{score}칸</span>
-            </div>
-          ))}
-        </div>
-        {isHost&&!isEnd&&game.mode==="all"&&(
-          <button onClick={nextProv}
-            style={{...S.btn,background:"#0f172a",color:"#fff",fontSize:17,marginBottom:8}}>
-            {nextProvName?`▶ 다음: ${nextProvName}`:  "▶ 다음 지역으로"}
-          </button>
-        )}
-        {isHost&&<button onClick={resetToLobby} style={{...S.btn,background:"#6366f1",color:"#fff",marginBottom:6}}>🔄 다시 하기</button>}
-        {!isHost&&!isEnd&&<div style={{color:"#64748b",fontSize:13,padding:"10px",background:"#f8fafc",borderRadius:11,border:"2px solid #e2e8f0",marginBottom:8}}>방장이 다음 지역을 선택 중이에요 ⏳</div>}
-        <button onClick={leaveRoom} style={{...S.ghost,width:"100%"}}>← 나가기</button>
-      </div></div>
-    );
+  if (phase === "solo_result") {
+    const isExam = soloType === "exam";
+    const accent = isExam ? EXAM_COLOR : "#0891b2";
+    const elapsed = (soloEnd || Date.now()) - (soloStart || Date.now());
+    const correct = Object.keys(soloOwners).length;
+    const soloProv = soloMap !== "nation" ? PROVINCES.find(p => p.key === soloMap) : null;
+    const total = soloProv ? soloProv.regions.length : TOTAL_REGIONS;
+    const pass = isExam ? !soloFailed && soloWrong < EXAM_FAIL_LIMIT : true;
+    return React.createElement("div", {
+      style: S.page
+    }, React.createElement("div", {
+      style: S.card
+    }, isExam ? pass ? React.createElement("div", {
+      style: {
+        fontSize: 56
+      }
+    }, "🎉") : React.createElement("div", {
+      style: {
+        fontSize: 56
+      }
+    }, "😢") : React.createElement("div", {
+      style: {
+        fontSize: 56
+      }
+    }, "🏅"), isExam && React.createElement("div", {
+      style: {
+        fontSize: 24,
+        fontWeight: 900,
+        color: pass ? "#22c55e" : "#ef4444",
+        margin: "4px 0 16px"
+      }
+    }, pass ? "합격!" : "불합격"), !isExam && React.createElement("div", {
+      style: {
+        fontSize: 22,
+        fontWeight: 900,
+        margin: "4px 0 16px"
+      }
+    }, "연습 완료!"), React.createElement("div", {
+      style: {
+        background: "#f8fafc",
+        borderRadius: 14,
+        padding: "16px",
+        marginBottom: 16,
+        border: "2px solid #e2e8f0",
+        textAlign: "left"
+      }
+    }, React.createElement("div", {
+      style: {
+        display: "flex",
+        justifyContent: "space-between",
+        padding: "8px 0",
+        borderBottom: "1px solid #e2e8f0"
+      }
+    }, React.createElement("span", {
+      style: {
+        color: "#64748b"
+      }
+    }, "⏱ 소요 시간"), React.createElement("b", null, fmtTime(elapsed))), React.createElement("div", {
+      style: {
+        display: "flex",
+        justifyContent: "space-between",
+        padding: "8px 0",
+        borderBottom: "1px solid #e2e8f0"
+      }
+    }, React.createElement("span", {
+      style: {
+        color: "#64748b"
+      }
+    }, "✅ 정답 (차지한 땅)"), React.createElement("b", {
+      style: {
+        color: "#22c55e"
+      }
+    }, correct, "개 / ", total, "개")), React.createElement("div", {
+      style: {
+        display: "flex",
+        justifyContent: "space-between",
+        padding: "8px 0",
+        borderBottom: isExam ? "1px solid #e2e8f0" : "none"
+      }
+    }, React.createElement("span", {
+      style: {
+        color: "#64748b"
+      }
+    }, "❌ 오답 횟수"), React.createElement("b", {
+      style: {
+        color: soloWrong > 0 ? "#ef4444" : "#22c55e"
+      }
+    }, soloWrong, "회")), isExam && React.createElement("div", {
+      style: {
+        display: "flex",
+        justifyContent: "space-between",
+        padding: "8px 0"
+      }
+    }, React.createElement("span", {
+      style: {
+        color: "#64748b"
+      }
+    }, "🚨 오답 한도"), React.createElement("b", {
+      style: {
+        color: soloWrong >= EXAM_FAIL_LIMIT ? "#ef4444" : "#64748b"
+      }
+    }, soloWrong, "/", EXAM_FAIL_LIMIT, "회"))), React.createElement("div", {
+      style: {
+        height: 14,
+        borderRadius: 7,
+        background: "#e2e8f0",
+        overflow: "hidden",
+        marginBottom: 16
+      }
+    }, React.createElement("div", {
+      style: {
+        height: "100%",
+        borderRadius: 7,
+        background: accent,
+        width: `${Math.round(correct / total * 100)}%`,
+        transition: "width 1s"
+      }
+    })), React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: "#94a3b8",
+        marginBottom: 16
+      }
+    }, Math.round(correct / total * 100), "% 정복"), React.createElement("button", {
+      onClick: soloStartGame,
+      style: {
+        ...S.btn,
+        background: accent,
+        color: "#fff",
+        marginBottom: 8
+      }
+    }, "🔄 다시 시작"), React.createElement("button", {
+      onClick: () => setPhase("solo_setup"),
+      style: {
+        ...S.ghost,
+        width: "100%",
+        marginBottom: 6
+      }
+    }, "⚙️ 설정 변경"), React.createElement("button", {
+      onClick: () => setPhase("home"),
+      style: {
+        ...S.ghost,
+        width: "100%"
+      }
+    }, "🏠 홈으로")));
   }
-
-  if(phase==="solo_setup"){
-    const isExam=soloType==="exam";
-    const accent=isExam?EXAM_CLR:SOLO_CLR;
-    const soloProv=soloMap!=="nation"?PROVINCES.find(p=>p.key===soloMap):null;
-    const cnt=soloProv?soloProv.regions.length:TOTAL_REGIONS;
-    return(
-      <div style={S.page}><div style={S.card}>
-        <div style={{fontSize:44}}>{isExam?"📝":"🎮"}</div>
-        <h2 style={{...S.h2,color:accent}}>{isExam?"시험 모드":"혼자 연습"}</h2>
-        {isExam?(
-          <div style={{fontSize:12,color:"#dc2626",background:"#fef2f2",borderRadius:10,padding:"8px 12px",marginBottom:12,border:"1px solid #fecaca"}}>
-            ⚠️ 오답 {EXAM_FAIL}회 이상 → 불합격!<br/>틀릴 때마다 내 땅 하나가 사라져요
-          </div>
-        ):(
-          <div style={{fontSize:12,color:SOLO_CLR,background:"#ecfeff",borderRadius:10,padding:"8px 12px",marginBottom:12,border:"1px solid #a5f3fc"}}>
-            💡 틀려도 패널티 없음 — 편하게 연습!
-          </div>
-        )}
-        <div style={S.lbl}>범위 선택 <span style={{color:accent}}>({cnt}개 지역)</span></div>
-        <button onClick={()=>setSoloMap("nation")}
-          style={{...S.modeBtn,...(soloMap==="nation"?{...S.modeBtnOn,borderColor:accent,background:accent}:{})}}>
-          🇰🇷 전국 전체 ({TOTAL_REGIONS}개)
-        </button>
-        <div style={{display:"flex",gap:5,flexWrap:"wrap",justifyContent:"center",marginTop:6}}>
-          {PROVINCES.map(p=>(
-            <button key={p.key} onClick={()=>setSoloMap(p.key)}
-              style={{...S.modeSmall,...(soloMap===p.key?{...S.modeBtnOn,borderColor:accent,background:accent}:{})}}>
-              {p.name}({p.regions.length})
-            </button>
-          ))}
-        </div>
-        <button onClick={soloStartGame}
-          style={{...S.btn,background:accent,color:"#fff",fontSize:18,marginTop:18}}>
-          {isExam?"📝 시험 시작!":"🎮 연습 시작!"}
-        </button>
-        <button onClick={()=>setPhase("home")} style={{...S.ghost,marginTop:10,width:"100%"}}>← 돌아가기</button>
-      </div></div>
-    );
+  if (phase === "solo_game") {
+    const isExam = soloType === "exam";
+    const accent = isExam ? EXAM_COLOR : "#0891b2";
+    const soloProv = soloMap !== "nation" ? PROVINCES.find(p => p.key === soloMap) : null;
+    const total = soloProv ? soloProv.regions.length : TOTAL_REGIONS;
+    const correct = Object.keys(soloOwners).length;
+    const selProvName = selProv ? PROVINCES.find(p => p.key === selProv)?.name : "";
+    const elapsed = soloNow && soloStart ? soloNow - soloStart : 0;
+    return React.createElement("div", {
+      style: S.page
+    }, React.createElement("div", {
+      style: {
+        maxWidth: 720,
+        margin: "0 auto 6px"
+      }
+    }, React.createElement("div", {
+      style: {
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        flexWrap: "wrap",
+        gap: 6,
+        marginBottom: 6,
+        padding: "0 2px"
+      }
+    }, React.createElement("div", {
+      style: {
+        display: "flex",
+        gap: 8,
+        alignItems: "center"
+      }
+    }, React.createElement("span", {
+      style: {
+        fontSize: 13,
+        fontWeight: 700,
+        color: accent
+      }
+    }, isExam ? "📝 시험" : "🎮 연습"), soloProv && React.createElement("span", {
+      style: {
+        fontSize: 13,
+        color: "#64748b"
+      }
+    }, soloProv.name)), React.createElement("div", {
+      style: {
+        display: "flex",
+        gap: 6,
+        alignItems: "center"
+      }
+    }, React.createElement("span", {
+      style: {
+        fontSize: 13,
+        color: "#475569"
+      }
+    }, "⏱ ", fmtTime(elapsed)), React.createElement("button", {
+      onClick: () => setBgmOn(v => !v),
+      style: {
+        ...S.ghost,
+        fontSize: 13,
+        padding: "2px 8px"
+      }
+    }, bgmOn ? "🔊" : "🔇"))), React.createElement("div", {
+      style: {
+        display: "flex",
+        gap: 6,
+        justifyContent: "center",
+        flexWrap: "wrap"
+      }
+    }, React.createElement("div", {
+      style: {
+        padding: "5px 14px",
+        background: "#fff",
+        borderRadius: 10,
+        border: `2px solid ${accent}`,
+        fontWeight: 700,
+        fontSize: 14,
+        color: accent
+      }
+    }, correct, "/", total, " 정복"), React.createElement("div", {
+      style: {
+        padding: "5px 14px",
+        background: soloWrong > 0 ? "#fef2f2" : "#fff",
+        borderRadius: 10,
+        border: `2px solid ${soloWrong > 0 ? "#fca5a5" : "#e2e8f0"}`,
+        fontWeight: 700,
+        fontSize: 14,
+        color: soloWrong > 0 ? "#dc2626" : "#94a3b8"
+      }
+    }, "❌ ", soloWrong, "회", isExam ? `/${EXAM_FAIL_LIMIT}` : "")), React.createElement("div", {
+      style: {
+        height: 6,
+        borderRadius: 3,
+        background: "#e2e8f0",
+        overflow: "hidden",
+        margin: "6px 0",
+        maxWidth: 320,
+        marginLeft: "auto",
+        marginRight: "auto"
+      }
+    }, React.createElement("div", {
+      style: {
+        height: "100%",
+        borderRadius: 3,
+        background: accent,
+        width: `${Math.round(correct / total * 100)}%`,
+        transition: "width .3s"
+      }
+    }))), React.createElement("div", {
+      style: {
+        maxWidth: 720,
+        margin: "0 auto"
+      }
+    }, React.createElement("div", {
+      style: {
+        position: "relative",
+        width: "100%",
+        maxWidth: isNationMode ? 460 : 560,
+        margin: "0 auto",
+        aspectRatio: isNationMode ? `${MAP_W}/${MAP_H}` : "1/1",
+        borderRadius: 16,
+        overflow: "hidden",
+        background: "#fff",
+        border: `2px solid ${accent}44`,
+        boxShadow: "0 8px 24px -8px rgba(0,0,0,.2)"
+      }
+    }, React.createElement("svg", {
+      viewBox: viewBox,
+      preserveAspectRatio: "xMidYMid meet",
+      style: {
+        position: "absolute",
+        inset: 0,
+        width: "100%",
+        height: "100%"
+      }
+    }, React.createElement("image", {
+      href: MAP_BG,
+      xlinkHref: MAP_BG,
+      x: "0",
+      y: "0",
+      width: MAP_W,
+      height: MAP_H,
+      preserveAspectRatio: "none"
+    }), isNationMode ? PROVINCES.map(p => p.regions.map(r => renderSoloRegion(p.key, r))) : soloProv?.regions.map(r => renderSoloRegion(soloProv.key, r))))), React.createElement("div", {
+      style: {
+        maxWidth: 720,
+        margin: "8px auto 0",
+        textAlign: "center"
+      }
+    }, React.createElement("button", {
+      onClick: soloBack,
+      style: S.ghost
+    }, "← 그만하기"), React.createElement("span", {
+      style: {
+        fontSize: 11,
+        color: "#94a3b8",
+        marginLeft: 8
+      }
+    }, "빈 땅 탭 → 초성 맞추기!")), sel && React.createElement("div", {
+      style: S.overlay,
+      onClick: () => {
+        setSel(null);
+        setSelProv(null);
+        setMfb(null);
+      }
+    }, React.createElement("div", {
+      style: S.modal,
+      onClick: e => e.stopPropagation()
+    }, React.createElement("div", {
+      style: {
+        fontSize: 13,
+        color: "#94a3b8",
+        marginBottom: 4
+      }
+    }, isNationMode ? `${selProvName} · ` : "", "이 땅은?"), React.createElement("div", {
+      style: {
+        fontSize: 46,
+        fontWeight: 900,
+        letterSpacing: 8,
+        background: "#f8fafc",
+        borderRadius: 14,
+        padding: "12px 0",
+        margin: "0 0 12px"
+      }
+    }, choseong(sel)), isExam && React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: soloWrong >= EXAM_FAIL_LIMIT - 3 ? "#dc2626" : "#94a3b8",
+        marginBottom: 8
+      }
+    }, "오답 ", soloWrong, "/", EXAM_FAIL_LIMIT, " — ", EXAM_FAIL_LIMIT - soloWrong, "번 더 틀리면 불합격!"), React.createElement("input", {
+      ref: inputRef,
+      autoFocus: true,
+      value: inputAns,
+      placeholder: "지역 이름 입력",
+      onKeyDown: e => {
+        if (e.key === "Enter") soloSubmit();
+      },
+      onChange: e => {
+        setInputAns(e.target.value);
+        setMfb(null);
+      },
+      style: {
+        fontFamily: "'Jua',sans-serif",
+        fontSize: 20,
+        padding: "11px 14px",
+        borderRadius: 13,
+        border: "2px solid #e2e8f0",
+        width: "100%",
+        textAlign: "center",
+        outline: "none"
+      }
+    }), mfb && React.createElement("div", {
+      style: {
+        fontSize: 13,
+        marginTop: 8,
+        fontWeight: 700,
+        color: "#dc2626"
+      }
+    }, mfb.msg), React.createElement("button", {
+      onClick: soloSubmit,
+      style: {
+        fontFamily: "'Jua',sans-serif",
+        marginTop: 14,
+        width: "100%",
+        fontSize: 17,
+        padding: 13,
+        borderRadius: 13,
+        border: "none",
+        background: accent,
+        color: "#fff",
+        fontWeight: 700,
+        cursor: "pointer",
+        boxShadow: "0 4px 0 rgba(0,0,0,.18)"
+      }
+    }, "정답 제출 🚩"), React.createElement("button", {
+      onClick: () => {
+        setSel(null);
+        setSelProv(null);
+        setMfb(null);
+      },
+      style: {
+        fontFamily: "'Jua',sans-serif",
+        marginTop: 10,
+        width: "100%",
+        fontSize: 14,
+        padding: "9px",
+        borderRadius: 11,
+        border: "2px solid #e2e8f0",
+        background: "#fff",
+        color: "#64748b",
+        cursor: "pointer"
+      }
+    }, "닫기"))));
   }
-
-  if(phase==="solo_result"){
-    const isExam=soloType==="exam";
-    const accent=isExam?EXAM_CLR:SOLO_CLR;
-    const elapsed=(soloEnd||Date.now())-(soloStart||Date.now());
-    const correct=Object.keys(soloOwners).length;
-    const total=(soloMap==="nation"?TOTAL_REGIONS:(PROVINCES.find(p=>p.key===soloMap)?.regions.length||0));
-    const pass=!soloFailed&&soloWrong<EXAM_FAIL;
-    return(
-      <div style={S.page}><div style={S.card}>
-        <div style={{fontSize:56}}>{isExam?(pass?"🎉":"😢"):"🏅"}</div>
-        {isExam&&<div style={{fontSize:24,fontWeight:900,color:pass?"#22c55e":"#ef4444",margin:"4px 0 12px"}}>{pass?"합격!":"불합격"}</div>}
-        {!isExam&&<div style={{fontSize:22,fontWeight:900,margin:"4px 0 12px"}}>연습 완료!</div>}
-        <div style={{background:"#f8fafc",borderRadius:14,padding:"14px",marginBottom:14,border:"2px solid #e2e8f0",textAlign:"left"}}>
-          <div style={S.scoreRow}>
-            <span style={{color:"#64748b"}}>⏱ 소요 시간</span><b>{fmtTime(elapsed)}</b>
-          </div>
-          <div style={{...S.scoreRow,borderTop:"1px solid #e2e8f0"}}>
-            <span style={{color:"#64748b"}}>✅ 정답 (차지한 땅)</span>
-            <b style={{color:"#22c55e"}}>{correct}/{total}개</b>
-          </div>
-          <div style={{...S.scoreRow,borderTop:"1px solid #e2e8f0",borderBottom:isExam?"1px solid #e2e8f0":"none"}}>
-            <span style={{color:"#64748b"}}>❌ 오답 횟수</span>
-            <b style={{color:soloWrong>0?"#ef4444":"#22c55e"}}>{soloWrong}회</b>
-          </div>
-          {isExam&&(
-            <div style={{...S.scoreRow,borderTop:"none"}}>
-              <span style={{color:"#64748b"}}>🚨 오답 한도</span>
-              <b style={{color:soloWrong>=EXAM_FAIL?"#ef4444":"#64748b"}}>{soloWrong}/{EXAM_FAIL}회</b>
-            </div>
-          )}
-        </div>
-        <div style={{height:12,borderRadius:6,background:"#e2e8f0",overflow:"hidden",marginBottom:6}}>
-          <div style={{height:"100%",borderRadius:6,background:accent,width:`${Math.min(100,Math.round(correct/total*100))}%`,transition:"width 1s"}}/>
-        </div>
-        <div style={{fontSize:12,color:"#94a3b8",marginBottom:14}}>{Math.round(correct/total*100)}% 정복</div>
-        <button onClick={soloStartGame} style={{...S.btn,background:accent,color:"#fff",marginBottom:8}}>🔄 다시 시작</button>
-        <button onClick={()=>setPhase("solo_setup")} style={{...S.ghost,width:"100%",marginBottom:6}}>⚙️ 설정 변경</button>
-        <button onClick={()=>setPhase("home")}        style={{...S.ghost,width:"100%"}}>🏠 홈으로</button>
-      </div></div>
-    );
+  if (phase === "game") {
+    const myTeam = myTeamIdx !== null ? teams[myTeamIdx] : null;
+    const selProvName = selProv ? PROVINCES.find(p => p.key === selProv)?.name : "";
+    return React.createElement("div", {
+      style: S.page
+    }, React.createElement("div", {
+      style: {
+        maxWidth: 720,
+        margin: "0 auto 6px"
+      }
+    }, React.createElement("div", {
+      style: {
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 8,
+        marginBottom: 4
+      }
+    }, React.createElement("div", {
+      style: {
+        fontSize: 17,
+        fontWeight: 700
+      }
+    }, game.mode === "nation" ? "🇰🇷 전국 한방" : prov?.name || ""), React.createElement("button", {
+      onClick: () => setBgmOn(v => !v),
+      style: {
+        ...S.ghost,
+        fontSize: 14,
+        padding: "2px 8px"
+      }
+    }, bgmOn ? "🔊" : "🔇")), myTeam && React.createElement("div", {
+      style: {
+        display: "flex",
+        justifyContent: "center",
+        marginBottom: 5
+      }
+    }, React.createElement("div", {
+      style: {
+        background: myTeam.color,
+        color: "#fff",
+        fontWeight: 700,
+        fontSize: 14,
+        padding: "5px 16px",
+        borderRadius: 20,
+        boxShadow: "0 2px 0 rgba(0,0,0,.15)"
+      }
+    }, "🏳️ 나는 ", myTeam.name)), React.createElement("div", {
+      style: {
+        display: "flex",
+        gap: 6,
+        justifyContent: "center",
+        flexWrap: "wrap"
+      }
+    }, teams.map((t, i) => React.createElement("div", {
+      key: i,
+      style: {
+        display: "flex",
+        alignItems: "center",
+        gap: 5,
+        padding: "5px 12px",
+        background: "#fff",
+        borderRadius: 10,
+        border: `2px solid ${t.color}`,
+        boxShadow: i === myTeamIdx ? `0 0 0 2px ${t.color}` : "none"
+      }
+    }, React.createElement("div", {
+      style: {
+        width: 10,
+        height: 10,
+        borderRadius: "50%",
+        background: t.color
+      }
+    }), React.createElement("span", {
+      style: {
+        fontSize: 13
+      }
+    }, t.name), React.createElement("b", {
+      style: {
+        color: t.color,
+        fontSize: 16
+      }
+    }, scores[i] || 0))), React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: "#64748b",
+        background: "#fff",
+        borderRadius: 10,
+        padding: "5px 10px",
+        border: "2px solid #e2e8f0"
+      }
+    }, game.mode === "nation" ? `${totalOwned}/${TOTAL_REGIONS}` : `${provOwned}/${provTotal}`))), React.createElement("div", {
+      style: {
+        maxWidth: 720,
+        margin: "0 auto"
+      }
+    }, React.createElement("div", {
+      style: {
+        position: "relative",
+        width: "100%",
+        maxWidth: game.mode === "nation" ? 460 : 560,
+        margin: "0 auto",
+        aspectRatio: game.mode === "nation" ? `${MAP_W}/${MAP_H}` : "1/1",
+        borderRadius: 16,
+        overflow: "hidden",
+        background: "#fff",
+        border: "2px solid #e2e8f0",
+        boxShadow: "0 8px 24px -8px rgba(0,0,0,.2)"
+      }
+    }, React.createElement("svg", {
+      viewBox: viewBox,
+      preserveAspectRatio: "xMidYMid meet",
+      style: {
+        position: "absolute",
+        inset: 0,
+        width: "100%",
+        height: "100%"
+      }
+    }, React.createElement("image", {
+      href: MAP_BG,
+      xlinkHref: MAP_BG,
+      x: "0",
+      y: "0",
+      width: MAP_W,
+      height: MAP_H,
+      preserveAspectRatio: "none"
+    }), game.mode === "nation" ? PROVINCES.map(p => p.regions.map(r => renderTeamRegion(p.key, r))) : prov?.regions.map(r => renderTeamRegion(prov.key, r))))), React.createElement("div", {
+      style: {
+        maxWidth: 720,
+        margin: "8px auto 0",
+        textAlign: "center"
+      }
+    }, React.createElement("button", {
+      onClick: leaveRoom,
+      style: S.ghost
+    }, "← 나가기"), React.createElement("span", {
+      style: {
+        fontSize: 11,
+        color: "#94a3b8",
+        marginLeft: 8
+      }
+    }, "빈 땅 탭 → 초성 맞추기 → 내 팀 땅!")), sel && React.createElement("div", {
+      style: S.overlay,
+      onClick: () => {
+        setSel(null);
+        setSelProv(null);
+        setMfb(null);
+      }
+    }, React.createElement("div", {
+      style: S.modal,
+      onClick: e => e.stopPropagation()
+    }, React.createElement("div", {
+      style: {
+        fontSize: 13,
+        color: "#94a3b8",
+        marginBottom: 4
+      }
+    }, game.mode === "nation" ? `${selProvName} · ` : "", "이 땅은?"), React.createElement("div", {
+      style: {
+        fontSize: 46,
+        fontWeight: 900,
+        letterSpacing: 8,
+        background: "#f8fafc",
+        borderRadius: 14,
+        padding: "12px 0",
+        margin: "0 0 12px"
+      }
+    }, choseong(sel)), React.createElement("input", {
+      ref: inputRef,
+      autoFocus: true,
+      value: inputAns,
+      placeholder: "지역 이름 입력",
+      onKeyDown: e => {
+        if (e.key === "Enter") submit();
+      },
+      onChange: e => {
+        setInputAns(e.target.value);
+        setMfb(null);
+      },
+      style: {
+        fontFamily: "'Jua',sans-serif",
+        fontSize: 20,
+        padding: "11px 14px",
+        borderRadius: 13,
+        border: "2px solid #e2e8f0",
+        width: "100%",
+        textAlign: "center",
+        outline: "none"
+      }
+    }), mfb && React.createElement("div", {
+      style: {
+        fontSize: 13,
+        marginTop: 8,
+        fontWeight: 700,
+        color: "#dc2626"
+      }
+    }, mfb.msg), myTeam && React.createElement("button", {
+      onClick: submit,
+      style: {
+        fontFamily: "'Jua',sans-serif",
+        marginTop: 14,
+        width: "100%",
+        fontSize: 17,
+        padding: 13,
+        borderRadius: 13,
+        border: "none",
+        background: myTeam.color,
+        color: "#fff",
+        fontWeight: 700,
+        cursor: "pointer",
+        boxShadow: "0 4px 0 rgba(0,0,0,.18)"
+      }
+    }, myTeam.name, " 땅 차지! 🚩"), React.createElement("button", {
+      onClick: () => {
+        setSel(null);
+        setSelProv(null);
+        setMfb(null);
+      },
+      style: {
+        fontFamily: "'Jua',sans-serif",
+        marginTop: 10,
+        width: "100%",
+        fontSize: 14,
+        padding: "9px",
+        borderRadius: 11,
+        border: "2px solid #e2e8f0",
+        background: "#fff",
+        color: "#64748b",
+        cursor: "pointer"
+      }
+    }, "닫기"))));
   }
-
-  /* ── 1인용 게임 ── */
-  if(phase==="solo_game"){
-    const isExam=soloType==="exam";
-    const accent=isExam?EXAM_CLR:SOLO_CLR;
-    const soloProv=soloMap!=="nation"?PROVINCES.find(p=>p.key===soloMap):null;
-    const total=soloProv?soloProv.regions.length:TOTAL_REGIONS;
-    const correct=Object.keys(soloOwners).length;
-    const elapsed=soloNow&&soloStart?soloNow-soloStart:0;
-    const close=()=>{setSel(null);setSelProv(null);setMfb(null);};
-    return(
-      <div style={S.page}>
-        <div style={{maxWidth:720,margin:"0 auto 6px"}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:6,marginBottom:6,padding:"0 2px"}}>
-            <span style={{fontSize:14,fontWeight:700,color:accent}}>{isExam?"📝 시험":"🎮 연습"}{soloProv?` — ${soloProv.name}`:""}</span>
-            <div style={{display:"flex",gap:6,alignItems:"center"}}>
-              <span style={{fontSize:13,color:"#475569",fontWeight:700}}>⏱ {fmtTime(elapsed)}</span>
-              <button onClick={()=>setBgmOn(v=>!v)} style={{...S.ghost,fontSize:12,padding:"2px 8px"}}>{bgmOn?"🔊":"🔇"}</button>
-            </div>
-          </div>
-          <div style={{display:"flex",gap:6,justifyContent:"center",flexWrap:"wrap",marginBottom:4}}>
-            <div style={{padding:"5px 14px",background:"#fff",borderRadius:10,border:`2px solid ${accent}`,fontWeight:700,fontSize:14,color:accent}}>
-              {correct}/{total} 정복
-            </div>
-            <div style={{padding:"5px 14px",background:soloWrong>0?"#fef2f2":"#fff",borderRadius:10,border:`2px solid ${soloWrong>0?"#fca5a5":"#e2e8f0"}`,fontWeight:700,fontSize:14,color:soloWrong>0?"#dc2626":"#94a3b8"}}>
-              ❌ {soloWrong}{isExam?`/${EXAM_FAIL}`:""}회
-            </div>
-          </div>
-          <div style={{height:5,borderRadius:3,background:"#e2e8f0",overflow:"hidden",maxWidth:320,margin:"0 auto"}}>
-            <div style={{height:"100%",borderRadius:3,background:accent,width:`${Math.round(correct/total*100)}%`,transition:"width .3s"}}/>
-          </div>
-        </div>
-        <div style={{maxWidth:720,margin:"0 auto"}}>
-          <MapBox accent={accent}>
-            {isNation
-              ?PROVINCES.map(p=>p.regions.map(r=>renderSolo(p.key,r)))
-              :soloProv?.regions.map(r=>renderSolo(soloProv.key,r))
-            }
-          </MapBox>
-        </div>
-        <div style={{maxWidth:720,margin:"8px auto 0",textAlign:"center"}}>
-          <button onClick={soloBack} style={S.ghost}>← 그만하기</button>
-          <span style={{fontSize:11,color:"#94a3b8",marginLeft:8}}>빈 땅 탭 → 초성 확인 → 정답 입력!</span>
-        </div>
-        {sel&&(
-          <AnswerModal onSubmit={soloSubmit} onClose={close} accent={accent}
-            extraInfo={isExam&&(
-              <div style={{fontSize:12,color:soloWrong>=EXAM_FAIL-3?"#dc2626":"#94a3b8",marginBottom:8,fontWeight:700}}>
-                오답 {soloWrong}/{EXAM_FAIL} — {EXAM_FAIL-soloWrong}번 더 틀리면 불합격!
-              </div>
-            )}
-          />
-        )}
-      </div>
-    );
-  }
-
-  /* ── 팀전 게임 ── */
-  if(phase==="game"){
-    const myTeam=myTeamIdx!==null?teams[myTeamIdx]:null;
-    const myWrongCount=roomData?.wrongCounts?.[myPid]||0;
-    const isBlocked=myWrongCount>=TEAM_WRONG_LIMIT;
-    const close=()=>{setSel(null);setSelProv(null);setMfb(null);};
-    return(
-      <div style={S.page}>
-        <div style={{maxWidth:720,margin:"0 auto 6px"}}>
-          {/* 방 코드 (재입장용) */}
-          <div style={{textAlign:"center",fontSize:11,color:"#94a3b8",marginBottom:3}}>
-            방 코드 <b style={{color:"#0f172a",letterSpacing:4,fontSize:13}}>{roomCode}</b>
-            <button onClick={()=>setBgmOn(v=>!v)} style={{...S.ghost,fontSize:12,padding:"2px 6px",marginLeft:8}}>{bgmOn?"🔊":"🔇"}</button>
-          </div>
-          {/* 도 이름 */}
-          <div style={{textAlign:"center",fontSize:16,fontWeight:700,marginBottom:4}}>
-            {game.mode==="nation"?"🇰🇷 전국 한방":game.mode==="all"?`📍 ${prov?.name||""}`:prov?.name||""}
-          </div>
-          {/* 내 팀 + 오답 잠금 표시 */}
-          {myTeam&&(
-            <div style={{display:"flex",justifyContent:"center",gap:6,marginBottom:6,flexWrap:"wrap"}}>
-              <div style={{background:myTeam.color,color:"#fff",fontWeight:700,fontSize:13,padding:"4px 16px",borderRadius:20}}>
-                🏳️ 나는 {myTeam.name}
-              </div>
-              {myWrongCount>0&&(
-                <div style={{background:isBlocked?"#dc2626":"#fef2f2",color:isBlocked?"#fff":"#dc2626",fontWeight:700,fontSize:12,padding:"4px 12px",borderRadius:20,border:`1px solid ${isBlocked?"#dc2626":"#fca5a5"}`}}>
-                  {isBlocked?"🔒 잠금 (오답초과)":`❌ 오답 ${myWrongCount}/${TEAM_WRONG_LIMIT}`}
-                </div>
-              )}
-            </div>
-          )}
-          {isBlocked&&(
-            <div style={{textAlign:"center",fontSize:13,color:"#dc2626",background:"#fef2f2",border:"2px solid #fca5a5",borderRadius:10,padding:"6px 14px",marginBottom:6,fontWeight:700}}>
-              🔒 오답 {TEAM_WRONG_LIMIT}회 초과 — 이번 게임 참여 불가
-            </div>
-          )}
-          {/* 팀 점수 */}
-          <div style={{display:"flex",gap:5,justifyContent:"center",flexWrap:"wrap"}}>
-            {teams.map((t,i)=>(
-              <div key={i} style={{display:"flex",alignItems:"center",gap:4,padding:"4px 10px",background:"#fff",borderRadius:10,border:`2px solid ${t.color}`,boxShadow:i===myTeamIdx?`0 0 0 2px ${t.color}`:"none"}}>
-                <div style={{width:9,height:9,borderRadius:"50%",background:t.color}}/>
-                <span style={{fontSize:12}}>{t.name}</span>
-                <b style={{color:t.color,fontSize:15}}>{scores[i]||0}</b>
-              </div>
-            ))}
-            <div style={{fontSize:11,color:"#64748b",background:"#fff",borderRadius:10,padding:"4px 9px",border:"2px solid #e2e8f0"}}>
-              {game.mode==="nation"?`${totalOwned}/${TOTAL_REGIONS}`:`${provOwned}/${provTotal}`}
-            </div>
-          </div>
-        </div>
-        <div style={{maxWidth:720,margin:"0 auto"}}>
-          <MapBox>
-            {game.mode==="nation"
-              ?PROVINCES.map(p=>p.regions.map(r=>renderTeam(p.key,r)))
-              :prov?.regions.map(r=>renderTeam(prov.key,r))
-            }
-          </MapBox>
-        </div>
-        <div style={{maxWidth:720,margin:"8px auto 0",textAlign:"center"}}>
-          <button onClick={leaveRoom} style={S.ghost}>← 나가기</button>
-          <span style={{fontSize:11,color:"#94a3b8",marginLeft:8}}>빈 땅 탭해서 초성 맞추기!</span>
-        </div>
-        {sel&&(
-          <AnswerModal onSubmit={submit} onClose={close}
-            accent={myTeam?.color||"#0f172a"}
-            extraInfo={myTeam&&(
-              <div style={{fontSize:12,color:myTeam.color,fontWeight:700,marginBottom:6}}>
-                🏳️ {myTeam.name}으로 제출
-              </div>
-            )}
-          />
-        )}
-      </div>
-    );
-  }
-
   return null;
 }
-
-const F="'Jua','Apple SD Gothic Neo','Malgun Gothic',sans-serif";
-const S={
-  page:        {fontFamily:F,minHeight:"100vh",background:"linear-gradient(160deg,#eff6ff,#fefce8)",padding:"12px 10px",boxSizing:"border-box"},
-  card:        {maxWidth:420,margin:"16px auto",background:"#fff",borderRadius:22,padding:"24px 20px",textAlign:"center",boxShadow:"0 20px 50px -12px rgba(0,0,0,.18)",border:"3px solid #bae6fd"},
-  h1:          {fontSize:26,margin:"4px 0",color:"#0f172a"},
-  h2:          {fontSize:20,margin:"0 0 14px",color:"#0f172a"},
-  sub:         {fontSize:13,color:"#64748b",margin:"0 0 4px"},
-  sectionLabel:{fontSize:11,color:"#94a3b8",marginBottom:8,fontWeight:700,letterSpacing:1},
-  lbl:         {fontSize:12,color:"#94a3b8",textAlign:"left",marginBottom:5},
-  inp:         {fontFamily:F,fontSize:16,padding:"10px 13px",borderRadius:12,border:"2px solid #e2e8f0",width:"100%",outline:"none"},
-  btn:         {fontFamily:F,width:"100%",fontSize:15,padding:"13px",borderRadius:13,border:"none",cursor:"pointer",fontWeight:700,boxShadow:"0 4px 0 rgba(0,0,0,.1)"},
-  ghost:       {fontFamily:F,fontSize:13,padding:"7px 14px",borderRadius:10,border:"2px solid #e2e8f0",background:"#fff",color:"#64748b",cursor:"pointer"},
-  modeBtn:     {fontFamily:F,width:"100%",fontSize:14,padding:"9px",borderRadius:11,border:"2px solid #e2e8f0",background:"#fff",color:"#475569",cursor:"pointer"},
-  modeBtnOn:   {background:"#0f172a",color:"#fff",borderColor:"#0f172a"},
-  modeSmall:   {fontFamily:F,fontSize:12,padding:"6px 10px",borderRadius:9,border:"2px solid #e2e8f0",background:"#fff",color:"#475569",cursor:"pointer"},
-  err:         {fontSize:12,color:"#ef4444",marginTop:8,padding:"7px",background:"#fef2f2",borderRadius:8},
-  overlay:     {position:"fixed",inset:0,background:"rgba(15,23,42,.5)",display:"flex",alignItems:"center",justifyContent:"center",padding:16,zIndex:50},
-  modal:       {background:"#fff",borderRadius:22,padding:"22px 20px",width:"min(380px,94vw)",textAlign:"center",boxShadow:"0 25px 60px rgba(0,0,0,.3)"},
-  scoreRow:    {display:"flex",justifyContent:"space-between",padding:"8px 0"},
+const F = "'Jua','Apple SD Gothic Neo','Malgun Gothic',sans-serif";
+const S = {
+  page: {
+    fontFamily: F,
+    minHeight: "100vh",
+    background: "linear-gradient(160deg,#eff6ff,#fefce8)",
+    padding: "12px 10px",
+    boxSizing: "border-box"
+  },
+  card: {
+    maxWidth: 420,
+    margin: "16px auto",
+    background: "#fff",
+    borderRadius: 22,
+    padding: "24px 20px",
+    textAlign: "center",
+    boxShadow: "0 20px 50px -12px rgba(0,0,0,.18)",
+    border: "3px solid #bae6fd"
+  },
+  h1: {
+    fontSize: 26,
+    margin: "4px 0",
+    color: "#0f172a"
+  },
+  h2: {
+    fontSize: 20,
+    margin: "0 0 14px",
+    color: "#0f172a"
+  },
+  sub: {
+    fontSize: 13,
+    color: "#64748b",
+    margin: "0 0 4px"
+  },
+  lbl: {
+    fontSize: 12,
+    color: "#94a3b8",
+    textAlign: "left",
+    marginBottom: 5
+  },
+  inp: {
+    fontFamily: F,
+    fontSize: 16,
+    padding: "10px 13px",
+    borderRadius: 12,
+    border: "2px solid #e2e8f0",
+    width: "100%",
+    outline: "none"
+  },
+  btn: {
+    fontFamily: F,
+    width: "100%",
+    fontSize: 15,
+    padding: "13px",
+    borderRadius: 13,
+    border: "none",
+    cursor: "pointer",
+    fontWeight: 700,
+    boxShadow: "0 4px 0 rgba(0,0,0,.1)"
+  },
+  ghost: {
+    fontFamily: F,
+    fontSize: 13,
+    padding: "7px 14px",
+    borderRadius: 10,
+    border: "2px solid #e2e8f0",
+    background: "#fff",
+    color: "#64748b",
+    cursor: "pointer"
+  },
+  modeBtn: {
+    fontFamily: F,
+    width: "100%",
+    fontSize: 14,
+    padding: "9px",
+    borderRadius: 11,
+    border: "2px solid #e2e8f0",
+    background: "#fff",
+    color: "#475569",
+    cursor: "pointer"
+  },
+  modeBtnOn: {
+    background: "#0f172a",
+    color: "#fff",
+    borderColor: "#0f172a"
+  },
+  modeSmall: {
+    fontFamily: F,
+    fontSize: 12,
+    padding: "6px 10px",
+    borderRadius: 9,
+    border: "2px solid #e2e8f0",
+    background: "#fff",
+    color: "#475569",
+    cursor: "pointer"
+  },
+  err: {
+    fontSize: 12,
+    color: "#ef4444",
+    marginTop: 8,
+    padding: "7px",
+    background: "#fef2f2",
+    borderRadius: 8
+  },
+  overlay: {
+    position: "fixed",
+    inset: 0,
+    background: "rgba(15,23,42,.5)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 16,
+    zIndex: 50
+  },
+  modal: {
+    background: "#fff",
+    borderRadius: 22,
+    padding: "22px 20px",
+    width: "min(380px,94vw)",
+    textAlign: "center",
+    boxShadow: "0 25px 60px rgba(0,0,0,.3)"
+  }
 };
-
-ReactDOM.createRoot(document.getElementById('root')).render(<LandGrab />);
+ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(LandGrab, null));
 </script>
 </body>
 </html>
